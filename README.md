@@ -17,7 +17,14 @@ On macOS, to ensure you can run Godot stuff from command line (this pretends to 
 
 On Windows, look for your 'Environment Variables' setting menu, click on the Path variable, and add a line with the directory path to your Godot executable. (Your executable needs to be named godot.exe - rename if necessary.)
 
-On Linux... good luck, but you probably know what you're doing. (Please add documentation if you figure it out.)
+On Linux:
+
+```
+wget https://downloads.tuxfamily.org/godotengine/3.5.1/Godot_v3.5.1-stable_x11.64.zip
+unzip Godot_v3.5.1-stable_x11.64.zip
+cp Godot_v3.5.1-stable_x11.64 ~/.local/bin/godot
+```
+This will download Godot and add it to `PATH` (eg. you can call `godot` to launch it).
 
 ### Python Installation
 
@@ -33,7 +40,13 @@ Windows:
 * Default installation is OK
 * Alternatively... you can type `python` into a terminal and it will launch the Microsoft Store, where you can try pressing "Get" for python. Maybe that will work (it sometimes throws an error).
 
-Linux: TODO
+Linux: Use deadsnakes PPA (also installs pip)
+```
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install python3.12 python3.12-pip
+```
+This will work for Ubuntu and other Debian-based distros. On Fedora, use `dnf` instead of `apt`, on Arch, use `pacman` instead, etc.
 
 Also make sure you have the following packages:
 
@@ -58,16 +71,24 @@ Notes:
 ## Running the System
 
 Connecting to the physical ROV:
-`ssh pi@192.168.0.99 -p 69`
+`ssh pi`
 Password: `raspberry` (yes this is the default)
 
 Note on cameras:
 ```sh
 pi@main:~/raspivid_mjpeg_server $ v4l2-ctl -d 4 -c exposure_auto=1,exposure_absolute=300,brightness=0,gain=100
-pi@main:~/raspivid_mjpeg_server $ v4l2-ctl -d 4 -v width=1024,height=768,pixelformat='MJPG' --stream-mmap --stream-to - | raspivid_mjpeg_server
+pi@main:~/raspivid_mjpeg_server $ v4l2-ctl -d 4 -v width=1024,height=768,pixelformat='MJPG' --stream-mmap --stream-to - | raspivid_mjpeg_server -p 8554
+pi@main:~/raspivid_mjpeg_server $ v4l2-ctl -d 0 -v width=1024,height=768,pixelformat='MJPG' --stream-mmap --stream-to - | raspivid_mjpeg_server -p 8555
 ```
 
-View: http://192.168.0.99:8554/
+You can run all of this with:
+```sh
+./start_cameras.sh > /dev/null 2>&1 &
+```
+
+(Bookmarked on surface station Chrome)
+Front cam: http://172.25.250.1:8554/
+Down cam: http://172.25.250.1:8555/
 
 Better balance of low light performance (~20 fps):
 ```sh
