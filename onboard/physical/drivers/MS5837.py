@@ -33,7 +33,9 @@ sensor = ms5837.MS5837_30BA() # Default I2C bus is 1 (Raspberry Pi 3)
 #sensor = ms5837.MS5837(model=ms5837.MS5837_MODEL_30BA, bus=0) # Specify model and bus
 
 # We must initialize the sensor before reading it
-if not sensor.init():
+if sensor.init():
+        print("Sensor initialized")
+else :
         print("Sensor could not be initialized")
         exit(1)
 
