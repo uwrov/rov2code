@@ -22,7 +22,20 @@ def main():
     interface.set_task(task)
 
     print('serving')
-    asyncio.run(serve(core, interface))
+    try:
+        asyncio.run(serve(core, interface))
+    except:
+        # Send kill
+        data = {
+			"type": "control_input",
+			"translation": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"bottom_manip_pwm": 1500,
+			"top_manip_pwm": 1500,
+		}
+        asyncio.run(core.consume_interface_websocket(data))
+        asyncio.run(core.update_controls())
+        print("Send kill packet")
 
 # start the surface station and interface servers
 # rov_server communicates with the actual ROV

@@ -66,7 +66,7 @@ func _on_data():
 	
 	if not acc[0]:
 		$LabelDebug.text = gyrotext
-	
+
 	var prev_rov_orientation = rov_orientation
 	
 	# convert quaternion from IMU to basis
@@ -137,7 +137,6 @@ func _on_data():
 	
 #	if gravity_calibration_rotation:
 #		rov_orientation = rov_orientation.rotated(gravity_calibration_rotation, gravity_calibration_rotation.length())
-	
 	
 	var euler = rov_orientation.get_euler()
 
@@ -256,15 +255,22 @@ func _process(delta):
 
 #		rotation += rotation_boost
 	
-	var manipulator_pwm = 1500
+	var bottom_manipulator_pwm = 1500
+	var top_manipulator_pwm = 1500
+
+	var OPEN_PWM = 75
+	var PWM_COEFFICIENT = 0.75
 	if Input.is_action_pressed("manipulator_close"):
-#		manipulator_pwm -= 50
-#		manipulator_pwm -= 100
-		manipulator_pwm -= 50
+		bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT
 	if Input.is_action_pressed("manipulator_open"):
-		manipulator_pwm += 100
-#		manipulator_pwm += 80
+		bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT
 	
+	if Input.is_action_pressed("manipulator_left"):
+		bottom_manipulator_pwm -= 95 * PWM_COEFFICIENT
+		top_manipulator_pwm -= 100 * PWM_COEFFICIENT
+	if Input.is_action_pressed("manipulator_right"):
+		bottom_manipulator_pwm += 90 * PWM_COEFFICIENT
+		top_manipulator_pwm += 100 * PWM_COEFFICIENT
 	
 #	rotation.y *= 0.3
 	rotation.x *= pow(abs(rotation.x), 1.0)
@@ -294,9 +300,7 @@ func _process(delta):
 	$"%RotationYValue".text = str("%0.3f" % rotation.y)
 	$"%RotationZValue".text = str("%0.3f" % rotation.z)
 	
-#	var servo_pwm = $ServoPWMSlider.value
-	var servo_pwm = manipulator_pwm
-	$ServoCurrentPWMLabel.text = str(servo_pwm)
+	$ServoCurrentPWMLabel.text = str(bottom_manipulator_pwm)
 	
 	translation *= Vector3(1.0, 2.5, 2.5)
 #	translation *= Vector3(1.0, 5.0, 3.0)
@@ -309,6 +313,7 @@ func _process(delta):
 			"translation": [translation.x, translation.y * 5.0, translation.z * 3.0],
 			"rotation": [rotation.x, rotation.y, rotation.z],
 			"direct_motors": $DirectMotorsButton.pressed,
-			"servo_pwm": int(servo_pwm),
+			"bottom_manip_pwm": int(bottom_manipulator_pwm),
+			"top_manip_pwm": int(top_manipulator_pwm),
 		}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

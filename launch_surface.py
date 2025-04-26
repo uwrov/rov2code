@@ -12,4 +12,7 @@ else:  # windows
         ['python.exe', 'surface.py'], cwd=surface_cwd, shell=True)
 
 while True:
-    pass
+    try:
+        surface_proc.poll()
+    except:  
+        break

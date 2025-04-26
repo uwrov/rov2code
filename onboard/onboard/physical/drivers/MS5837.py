@@ -69,7 +69,8 @@ time.sleep(5)
 # Just printing for initial sensor testing, next step is to get on websocket to surface
 while True:
         if sensor.read():
-                print(("P: %0.1f mbar  %0.3f psi\tT: %0.2f C  %0.2f F") % (
+            print(("Depth: %0.03f m P: %0.1f mbar  %0.3f psi\tT: %0.2f C  %0.2f F") % (
+                sensor.depth(), # saltwater depth
                 sensor.pressure(), # Default is mbar (no arguments)
                 sensor.pressure(ms5837.UNITS_psi), # Request psi
                 sensor.temperature(), # Default is degrees C (no arguments)
