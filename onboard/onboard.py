@@ -67,16 +67,13 @@ async def producer_handler(websocket: ClientConnection, rov: 'ROV'):
             asyncio.sleep(0.1)  # limit to 10 summaries per second
         )
 
-
 # TODO: create hardware-agnostic sensor reading system
 # currently requires hardcoding sensor pins, protocols, etc.
 async def send_onboard_digest(websocket: ClientConnection, rov: 'ROV'):
-    gyro, accel, rot_vel = await rov.poll_sensors()
+    readings = await rov.poll_sensors()
     await websocket.send(json.dumps({
         'type': 'sensor_summary',
-        'gyroscope': gyro,
-        'accelerometer': accel,
-        'rotational_velocity': rot_vel,
+        **readings,
     }))
 
 

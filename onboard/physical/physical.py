@@ -10,30 +10,9 @@ import time
 
 import adafruit_bno055
 
-def quaternion_to_euler_angle_vectorized1(w, x, y, z):
-    ysqr = y * y
-
-    t0 = +2.0 * (w * x + y * z)
-    t1 = +1.0 - 2.0 * (x * x + ysqr)
-    X = np.degrees(np.arctan2(t0, t1))
-
-    t2 = +2.0 * (w * y - z * x)
-    t2 = np.where(t2>+1.0,+1.0,t2)
-    #t2 = +1.0 if t2 > +1.0 else t2
-
-    t2 = np.where(t2<-1.0, -1.0, t2)
-    #t2 = -1.0 if t2 < -1.0 else t2
-    Y = np.degrees(np.arcsin(t2))
-
-    t3 = +2.0 * (w * z + x * y)
-    t4 = +1.0 - 2.0 * (ysqr + z * z)
-    Z = np.degrees(np.arctan2(t3, t4))
-
-    return X, Y, Z
-
 class ROV:
     def __init__(self):
-        self.last_timestamp = time.time()
+        self.last_timestamp = None
         self.pi = pigpio.pi()
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
@@ -46,7 +25,6 @@ class ROV:
                 print("UNABLE TO CONNECT TO SECONDARY IMU.")
                 self.secondary_bno = None
 
-            self.last_euler = None
             self.last_acceleration = np.zeros(3)
             self.linear_velocity = np.zeros(3)
 
@@ -99,71 +77,107 @@ class ROV:
     async def flush_pin_pwms(self):
         pass
 
+    # Not good!
+    def get_linear_velocity(self) -> dict:
+        if self.bno is None:
+            return {}
 
-    # updates accelerometer and gyroscope values
-    async def poll_sensors(self):
-        now = time.time()
-        readings = []
-        if self.bno is not None:
-            readings.append(self.bno.quaternion)
+        # Accelerometer data (in meters per second squared)
+        acceleration = np.array(self.bno.linear_acceleration)
 
-            # Accelerometer data (in meters per second squared)
-            acceleration = np.array(self.bno.linear_acceleration)
-            if self.secondary_bno is not None:
-                secondary_acceleration = np.array(self.secondary_bno.linear_acceleration)
-                if secondary_acceleration[0] is not None and acceleration[0] is not None:
-                    #print(secondary_acceleration)
-                    secondary_acceleration[1] *= -1
-                    secondary_acceleration[2] *= -1
-                    #print(f"Primary: {acceleration}")
-                    #print(f"Secondary: {secondary_acceleration}")
+        if self.secondary_bno is not None:
+            secondary_acceleration = np.array(self.secondary_bno.linear_acceleration)
 
-                    acceleration = np.mean((acceleration, secondary_acceleration), axis=0)
-                    #print(f"Combined: {acceleration}")
+            if secondary_acceleration[0] is not None:
+                secondary_acceleration[1] *= -1
+                secondary_acceleration[2] *= -1
 
-            readings.append(acceleration.tolist())
-
-            # Gyroscope data (in radians per second)
-            rot_vel = self.bno.gyro
-            if rot_vel[0] is not None:
-                readings.append([rot_vel[0], rot_vel[1], rot_vel[2]])
-
-            if acceleration[0] is not None:
-                if self.last_acceleration is not None:
-                    #print(f"Acceleration: {acceleration}")
-
-                    calibrate = False
-                    if calibrate:
-                        self.acceleration_readings.append(acceleration)
-
-                        WINDOW = 1000
-                        num_readings = min(WINDOW, len(self.acceleration_readings))
-                        print(f"Noise mean: {np.mean(self.acceleration_readings[-num_readings:], axis=0)}")
-                        print(f"Noise std: {np.std(self.acceleration_readings[-num_readings:], axis=0)}")
-
-
-                    if self.kahlman is None:
-                        self.linear_velocity += np.array(self.last_acceleration) * (now - self.last_timestamp)
-                    else:
-                        self.kahlman.predict()
-                        self.kahlman.update(acceleration)
-                        self.linear_velocity = self.kahlman.x
-                    #print(f"Linear velocity: {self.linear_velocity}")
-
-                    #readings.append([self.linear_velocity[0], self.linear_velocity[1], self.linear_velocity[2]])
-                else:
-                    #readings.append(-1)
-                    pass
-
-                self.last_acceleration = acceleration
+        if acceleration[0] is None:
+            if self.secondary_bno is not None and secondary_acceleration[0] is not None:
+                acceleration = secondary_acceleration
             else:
-                #readings.append(-1)
-                pass
+                # No good acceleration data, use our current linear_velocity
+                return {"linear_velocity", self.linear_velocity}
 
+        if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
+            # Good data from both!
+            acceleration = np.mean(
+                acceleration,
+                secondary_acceleration, axis=0)
+            }
+
+        if self.last_acceleration is not None:
+            # Lay flat and get ambient noise
+            calibrate = False
+            if calibrate:
+                self.acceleration_readings.append(acceleration)
+
+                WINDOW = 1000
+                num_readings = min(WINDOW, len(self.acceleration_readings))
+                print(f"Noise mean: {np.mean(self.acceleration_readings[-num_readings:], axis=0)}")
+                print(f"Noise std: {np.std(self.acceleration_readings[-num_readings:], axis=0)}")
+
+            now = time.time()
+            if self.kahlman is None:
+                # Do dumb interpolation if no Kahlman
+                self.linear_velocity += np.array(self.last_acceleration) * (now - self.last_timestamp)
+            else:
+                self.kahlman.predict()
+                self.kahlman.update(acceleration)
+                self.linear_velocity = self.kahlman.x
+
+            self.last_acceleration = acceleration
+            self.last_timestamp = now
+
+        return {"linear_velocity", self.linear_velocity}
+
+    def get_quaternion(self) -> dict:
+        if self.bno is None:
+            return {}
+        
+        quat = self.bno.quaternion
+        if quat[0] is None:
+            return {}
+        
+        return {"quaternion": quat}
+
+    def get_angular_velocity(self) -> dict:
+        if self.bno is None:
+            return {}
+
+        rot_vel = self.bno.gyro
+
+        if self.secondary_bno is not None:
+            secondary_rot_vel = self.secondary_bno.gyro
+
+        # Will be None if we get a bad reading
+        if rot_vel[0] is None:
+            # Primary is bad, fall back on secondary
+            if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
+                return {"gyroscope": [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]]}
+            else:
+                return {}
+
+        if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
+            # Good data from both!
+            return {"gyroscope": np.mean(
+                [rot_vel[0], rot_vel[1], rot_vel[2]],
+                [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]], axis=0)
+            }
         else:
-            readings.append(-1)
-            readings.append(-1)
-            readings.append(-1)
+            # Bad data from secondary, or we don't have one.
+            return {"gyroscope": [rot_vel[0], rot_vel[1], rot_vel[2]]}
 
-        self.last_timestamp = now
-        return readings
+    async def poll_sensors(self) -> dict:
+        readings = []
+
+        readings.append(self.get_quaternion())
+        readings.append(self.get_angular_velocity())
+        readings.append(self.get_linear_velocity())
+
+        # Will be a list of (maybe empty) dictionaries of readings to report
+        readings_dict = {}
+        for reading in readings:
+            readings_dict.update(reading)
+
+        return readings_dict

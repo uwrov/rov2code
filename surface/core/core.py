@@ -31,6 +31,19 @@ class Core():
 
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
 
+        TUNE_PID = True
+        if TUNE_PID:
+            import sys
+            from PyQt6.QtWidgets import QApplication
+            from pid_visualizer import PIDVisualizer
+
+            app = QApplication(sys.argv)
+            self.viz = PIDVisualizer()
+            self.viz.show()
+            sys.exit(app.exec())
+        else:
+            self.viz = None
+
     def set_interface(self, interface: 'Interface'):
         self.interface = interface
 
@@ -51,20 +64,16 @@ class Core():
 
         if not self.direct_motors:
             DEADBAND = 0.1
-            #print(f"Rot magnitude: {np.linalg.norm(powers[3:])}")
             if np.linalg.norm(powers[3:]) > DEADBAND or self.rotational_velocity is None or self.rotational_velocity == -1:
                 print("NO CORRECTION")
                 powers = convert_force_and_torque_to_motor_powers(powers)
             else:
                 ROT_CORRECTION_STRENGTH = [0.0, 0.0, 0.0]
                 # ROT_CORRECTION_STRENGTH = [0.5, 0.5, 0.5]
-                print(f"Rot vel: {np.round(self.rotational_velocity, 2)}")
-                # max_vel = np.zeros(3)
-                # max_vel[np.argmax(np.abs(self.rotational_velocity))] = 1 * np.sign(self.rotational_velocity)[np.argmax(np.abs(self.rotational_velocity))]
-                # print(f"Rot vel: {max_vel}")
                 powers[3:] = -np.array(self.rotational_velocity) * ROT_CORRECTION_STRENGTH
+                if self.viz is not None:
+                    self.viz.update_plot(0, self.rotational_velocity[0])
                 powers = convert_force_and_torque_to_motor_powers(powers)
-                # print(powers)
         else:
             powers = np.transpose(np.array([powers], dtype=np.float32))
 
