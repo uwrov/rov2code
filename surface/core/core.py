@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import pickle
 from .rov_config import thruster_config as THRUSTER_CFG
 from .accel_gyro_values import manipulate_gyro_accel
 
@@ -27,22 +28,11 @@ class Core():
         self.bottom_manip_pwm = 1500
         self.top_manip_pwm = 1500
 
-        self.accelerometer, self.gyroscope, self.rotational_velocity = None, None, None
+        self.accelerometer, self.quaternion, self.rotational_velocity = None, None, None
+        self.rotational_velocity_accum = np.zeros(3)
+        self.last_rotational_velocity = None
 
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
-
-        TUNE_PID = True
-        if TUNE_PID:
-            import sys
-            from PyQt6.QtWidgets import QApplication
-            from pid_visualizer import PIDVisualizer
-
-            app = QApplication(sys.argv)
-            self.viz = PIDVisualizer()
-            self.viz.show()
-            sys.exit(app.exec())
-        else:
-            self.viz = None
 
     def set_interface(self, interface: 'Interface'):
         self.interface = interface
@@ -64,15 +54,33 @@ class Core():
 
         if not self.direct_motors:
             DEADBAND = 0.1
-            if np.linalg.norm(powers[3:]) > DEADBAND or self.rotational_velocity is None or self.rotational_velocity == -1:
+            if np.linalg.norm(powers[3:]) > DEADBAND or self.rotational_velocity is None:
                 print("NO CORRECTION")
                 powers = convert_force_and_torque_to_motor_powers(powers)
+                self.rotational_velocity_accum = np.zeros(3)
             else:
-                ROT_CORRECTION_STRENGTH = [0.0, 0.0, 0.0]
-                # ROT_CORRECTION_STRENGTH = [0.5, 0.5, 0.5]
-                powers[3:] = -np.array(self.rotational_velocity) * ROT_CORRECTION_STRENGTH
-                if self.viz is not None:
-                    self.viz.update_plot(0, self.rotational_velocity[0])
+                ROT_CORRECTION_P = [0.25, 0.25, 0.5]
+                ROT_CORRECTION_I = [0.05, 0.025, 0.05]
+                ROT_CORRECTION_D = [0.2, 0.5, 1.0]
+                ROT_CORRECTION_P = [0,0,0]
+                ROT_CORRECTION_I = [0,0,0]
+                ROT_CORRECTION_D = [0,0,0]
+                print(self.rotational_velocity_accum)
+                self.rotational_velocity_accum += np.array(self.rotational_velocity)
+                p_term = np.array(self.rotational_velocity) * ROT_CORRECTION_P
+                i_term = self.rotational_velocity_accum * ROT_CORRECTION_I
+                if self.last_rotational_velocity is not None:
+                    d_term = (np.array(self.rotational_velocity) - self.last_rotational_velocity) * ROT_CORRECTION_D
+                else:
+                    d_term = 0
+
+                self.last_rotational_velocity = np.array(self.rotational_velocity)
+                powers[3:] = -(p_term + i_term + d_term)
+                # print(np.round(self.rotational_velocity, 2))
+                # print(f"powers: {np.round(powers[3:], 2)}")
+
+                pickle.dump(self.rotational_velocity, open("core/rot.pkl", 'wb'))
+                pickle.dump(0.0, open("core/setpoint.pkl", 'wb'))
                 powers = convert_force_and_torque_to_motor_powers(powers)
         else:
             powers = np.transpose(np.array([powers], dtype=np.float32))

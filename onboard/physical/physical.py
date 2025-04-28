@@ -12,7 +12,7 @@ import adafruit_bno055
 
 class ROV:
     def __init__(self):
-        self.last_timestamp = None
+        self.last_timestamp = time.time()
         self.pi = pigpio.pi()
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
@@ -20,6 +20,7 @@ class ROV:
 
             try:
                 self.secondary_bno = adafruit_bno055.BNO055_I2C(i2c, address=0x28)
+                self.secondary_bno = None
             except Exception as e:
                 print(e)
                 print("UNABLE TO CONNECT TO SECONDARY IMU.")
@@ -97,14 +98,13 @@ class ROV:
                 acceleration = secondary_acceleration
             else:
                 # No good acceleration data, use our current linear_velocity
-                return {"linear_velocity", self.linear_velocity}
+                return {"linear_velocity": self.linear_velocity.tolist()}
 
-        if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
+        if self.secondary_bno is not None and secondary_acceleration[0] is not None:
             # Good data from both!
             acceleration = np.mean(
-                acceleration,
-                secondary_acceleration, axis=0)
-            }
+                (acceleration,
+                secondary_acceleration), axis=0)
 
         if self.last_acceleration is not None:
             # Lay flat and get ambient noise
@@ -129,7 +129,7 @@ class ROV:
             self.last_acceleration = acceleration
             self.last_timestamp = now
 
-        return {"linear_velocity", self.linear_velocity}
+        return {"linear_velocity": self.linear_velocity.tolist()}
 
     def get_quaternion(self) -> dict:
         if self.bno is None:
@@ -151,22 +151,23 @@ class ROV:
             secondary_rot_vel = self.secondary_bno.gyro
 
         # Will be None if we get a bad reading
-        if rot_vel[0] is None:
+        if rot_vel[0] is None or np.max(np.abs(rot_vel)) > 5:
             # Primary is bad, fall back on secondary
             if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
-                return {"gyroscope": [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]]}
+                return {"rotational_velocity": [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]]}
             else:
                 return {}
+        print(np.round(rot_vel, 2))
 
         if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
             # Good data from both!
-            return {"gyroscope": np.mean(
-                [rot_vel[0], rot_vel[1], rot_vel[2]],
-                [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]], axis=0)
+            return {"rotational_velocity": np.mean(
+                ([rot_vel[0], rot_vel[1], rot_vel[2]],
+                [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]]), axis=0).tolist()
             }
         else:
             # Bad data from secondary, or we don't have one.
-            return {"gyroscope": [rot_vel[0], rot_vel[1], rot_vel[2]]}
+            return {"rotational_velocity": [rot_vel[0], rot_vel[1], rot_vel[2]]}
 
     async def poll_sensors(self) -> dict:
         readings = []

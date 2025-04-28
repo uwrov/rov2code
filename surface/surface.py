@@ -24,8 +24,10 @@ def main():
     print('serving')
     try:
         asyncio.run(serve(core, interface))
-    except:
+    except Exception as e:
         # Send kill
+        print(e)
+
         data = {
 			"type": "control_input",
 			"translation": [0, 0, 0],

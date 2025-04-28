@@ -52,7 +52,7 @@ func _on_data():
 #	$Label.text = data
 #	$Label.text = str(parsed)
 	var acc  = parsed["accelerometer"]
-	var gyro = parsed["gyroscope"]
+	var gyro = parsed["quaternion"]
 #	$Label.text = str(acc)
 	# IMU: x left, y forward, z up
 	# ROV: x left, y backward, z up
@@ -61,11 +61,11 @@ func _on_data():
 	if gyro[0] == null:
 		$LabelDebug.text = str(gyro)
 		return
-	var gyrotext = "%.5f %.5f %.5f\n%.5f %.5f %.5f %.5f" % [acc[0], acc[1], acc[2], gyro[0], gyro[1], gyro[2], gyro[3]]
-	$Label.text = gyrotext
+	# var gyrotext = "%.5f %.5f %.5f\n%.5f %.5f %.5f %.5f" % [acc[0], acc[1], acc[2], gyro[0], gyro[1], gyro[2], gyro[3]]
+	# $Label.text = gyrotext
 	
-	if not acc[0]:
-		$LabelDebug.text = gyrotext
+		# if not acc[0]:
+		# 	$LabelDebug.text = gyrotext
 
 	var prev_rov_orientation = rov_orientation
 	
@@ -75,8 +75,8 @@ func _on_data():
 	# swap yaw and pitch
 	var old_x = rov_orientation.x
 	var old_y = rov_orientation.y
-	rov_orientation.x = old_y
-	rov_orientation.y = old_x
+	rov_orientation.x = -old_y
+	rov_orientation.y = -old_x
 
 	# rotate to correct "up" direction
 	rov_orientation = rov_orientation.rotated(Vector3(0.0, 0.0, -1.0), PI / 2)

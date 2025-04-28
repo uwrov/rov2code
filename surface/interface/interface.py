@@ -32,5 +32,5 @@ class Interface():
         if self.websocket != None:
             await self.websocket.send(json.dumps({
                 'accelerometer': self.core.accelerometer,
-                'gyroscope': self.core.gyroscope
+                'quaternion': self.core.quaternion
             }))
