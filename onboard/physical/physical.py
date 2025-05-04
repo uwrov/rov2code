@@ -9,6 +9,7 @@ import numpy as np
 import time
 
 import adafruit_bno055
+import ms5837
 
 class ROV:
     def __init__(self):
@@ -66,6 +67,15 @@ class ROV:
             print(e)
             print("UNABLE TO CONNECT TO IMU")
             self.bno = None
+
+        try:
+            self.depth_sensor = ms5837.MS5837_30BA()
+            if not self.depth_sensor.init():
+                raise Exception()
+        except Exception as e:
+            print(e)
+            print("UNABLE TO CONNECT TO DEPTH SENSOR")
+            self.depth_sensor = None
 
     # number = GPIO number
     # value = PWM value
@@ -135,11 +145,25 @@ class ROV:
         if self.bno is None:
             return {}
         
-        quat = self.bno.quaternion
-        if quat[0] is None:
+        try:
+            quat = self.bno.quaternion
+            if quat[0] is None:
+                return {}
+
+            return {"quaternion": quat}
+        except:
             return {}
         
-        return {"quaternion": quat}
+
+    def get_gravity_vector(self) -> dict:
+        if self.bno is None:
+            return {}
+        
+        vec = self.bno.gravity
+        if vec[0] is None:
+            return {}
+
+        return {"gravity_vector": [-vec[0], -vec[1], vec[2]]}
 
     def get_angular_velocity(self) -> dict:
         if self.bno is None:
@@ -157,7 +181,6 @@ class ROV:
                 return {"rotational_velocity": [secondary_rot_vel[0], secondary_rot_vel[1], secondary_rot_vel[2]]}
             else:
                 return {}
-        print(np.round(rot_vel, 2))
 
         if self.secondary_bno is not None and secondary_rot_vel[0] is not None:
             # Good data from both!
@@ -169,12 +192,23 @@ class ROV:
             # Bad data from secondary, or we don't have one.
             return {"rotational_velocity": [rot_vel[0], rot_vel[1], rot_vel[2]]}
 
+    def get_depth(self) -> dict:
+        try:
+            if self.depth_sensor.read():
+                    return {"depth": self.depth_sensor.depth()}
+            else:
+                return {}
+        except:
+            return {}
+
     async def poll_sensors(self) -> dict:
         readings = []
 
         readings.append(self.get_quaternion())
         readings.append(self.get_angular_velocity())
         readings.append(self.get_linear_velocity())
+        readings.append(self.get_depth())
+        readings.append(self.get_gravity_vector())
 
         # Will be a list of (maybe empty) dictionaries of readings to report
         readings_dict = {}
