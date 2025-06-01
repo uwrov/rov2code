@@ -298,6 +298,14 @@ margin_bottom = 50.0
 text = "0.000"
 align = 2
 
+[node name="PowerBoost" type="Label" parent="."]
+margin_top = 300
+margin_left = 20.0
+margin_right = 70.0
+margin_bottom = 14.0
+text = "Power scale"
+align = 2
+
 [node name="Camera" type="Camera" parent="."]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5.57416 )
 

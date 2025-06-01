@@ -88,11 +88,26 @@ class ROV:
     async def flush_pin_pwms(self):
         pass
 
+
+    def get_linear_acceleration(self) -> dict:
+        if self.bno is None:
+            return {}
+
+        accel = np.array(self.bno.linear_acceleration)
+        
+        if self.secondary_bno is not None:
+            secondary_accel = np.array(self.secondary_bno.linear_acceleration)
+            if secondary_accel[0] is not None:
+                secondary_accel[1] *= -1
+                secondary_accel[2] *= -1
+                accel = np.mean((accel, secondary_accel), axis=0)
+
+        return {"accelerometer": accel}
+
     # Not good!
     def get_linear_velocity(self) -> dict:
         if self.bno is None:
             return {}
-
         # Accelerometer data (in meters per second squared)
         acceleration = np.array(self.bno.linear_acceleration)
 
@@ -207,6 +222,7 @@ class ROV:
         readings.append(self.get_quaternion())
         readings.append(self.get_angular_velocity())
         readings.append(self.get_linear_velocity())
+        readings.append(self.get_linear_acceleration())
         readings.append(self.get_depth())
         readings.append(self.get_gravity_vector())
 

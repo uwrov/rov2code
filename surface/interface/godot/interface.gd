@@ -10,6 +10,12 @@ var rov_orientation: Basis
 var target_orientation: Basis
 #var last_time = 0.0
 #var time = 0.0
+var power_scale := 1.8 setget set_power_scale
+var power_adjust_hold_time := 0.0
+var power_repeat_delay := 0.2  # Seconds between repeated steps
+var manipulator_repeat_delay := 0.5
+var manipulator_index = 0
+var totalManipulators = 5
 
 func _ready():
 	_client.connect("connection_closed", self, "_closed")
@@ -45,6 +51,10 @@ func basis_xform(operator: Basis, input: Basis):
 var derivative = Vector3.ZERO
 var imu_last_time = -1.0
 
+func set_power_scale(value: float) -> void:
+	power_scale = clamp(value, 0.05, 3.5)
+	#$PowerBoost.text = "Power scale: %.3f" % power_scale
+
 func _on_data():
 	var data = _client.get_peer(1).get_packet().get_string_from_utf8()
 	print("Got data from server: ", data)
@@ -77,7 +87,7 @@ func _on_data():
 	var old_y = rov_orientation.y
 	rov_orientation.x = -old_y
 	rov_orientation.y = -old_x
-
+	
 	# rotate to correct "up" direction
 	rov_orientation = rov_orientation.rotated(Vector3(0.0, 0.0, -1.0), PI / 2)
 	
@@ -148,11 +158,42 @@ var rotation_boost_i = Vector3.ZERO
 
 var error_integral = Vector3.ZERO
 
+var spinPWM = 1500
 func _process(delta):
 	
 #	time += delta
 	_client.poll()
 	
+	var holding_increase := Input.is_action_pressed("power_increase")
+	var holding_decrease := Input.is_action_pressed("power_decrease")
+	var next_manipulator := Input.is_action_pressed("manipulator_next")
+	var prev_manipulator := Input.is_action_pressed("manipulator_previous")
+
+	if holding_increase or holding_decrease:
+		power_adjust_hold_time -= delta
+		if power_adjust_hold_time <= 0.0:
+			if holding_increase:
+				set_power_scale(power_scale * 1.1)
+			elif holding_decrease:
+				set_power_scale(power_scale / 1.1)
+			power_adjust_hold_time = power_repeat_delay
+	elif next_manipulator or prev_manipulator:
+		power_adjust_hold_time -= delta
+		if power_adjust_hold_time <= 0.0:
+			if next_manipulator:
+				manipulator_index = manipulator_index + 1
+				$PowerBoost.text = "Manipulator index: %.3f" % manipulator_index
+			elif prev_manipulator:
+				manipulator_index = manipulator_index - 1
+				$PowerBoost.text = "Manipulator index: %.3f" % manipulator_index
+			power_adjust_hold_time = manipulator_repeat_delay
+		if manipulator_index > totalManipulators:
+			manipulator_index = 0
+		if manipulator_index < 1:
+			manipulator_index = totalManipulators
+	else:
+		power_adjust_hold_time = 0  # Reset when not held
+
 	
 #	var translation: Vector3 = Vector3.FORWARD
 	
@@ -186,6 +227,7 @@ func _process(delta):
 #		rotation_boost += Vector3(0.0, 0.0, y_ctrl)
 #		$LabelSASState.text += str(y_ctrl)
 #		pass
+		print("foo")
 		
 		
 		rotation_boost = Vector3.ZERO
@@ -259,18 +301,35 @@ func _process(delta):
 	var top_manipulator_pwm = 1500
 
 	var OPEN_PWM = 75
-	var PWM_COEFFICIENT = 0.75
-	if Input.is_action_pressed("manipulator_close"):
-		bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT
-	if Input.is_action_pressed("manipulator_open"):
-		bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT
+	var PWM_COEFFICIENT = 1
+	if manipulator_index == 1:
+		if Input.is_action_pressed("manipulator_close"):
+			bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_open"):
+			bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
+		
+		if Input.is_action_pressed("manipulator_left"):
+			bottom_manipulator_pwm -= 100 * PWM_COEFFICIENT #90 is ok
+			top_manipulator_pwm -= 100 * PWM_COEFFICIENT
+		if Input.is_action_pressed("manipulator_right"):
+			bottom_manipulator_pwm += 115 * PWM_COEFFICIENT #95 is ok
+			top_manipulator_pwm += 100 * PWM_COEFFICIENT
+	elif manipulator_index == 2:
+		if Input.is_action_pressed("manipulator_close"):
+			spinPWM = 1500
+		if Input.is_action_pressed("manipulator_open"):
+			spinPWM = 1600
+		top_manipulator_pwm = spinPWM
+	elif manipulator_index == 3:
+		if Input.is_action_pressed("manipulator_close"):
+			bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_open"):
+			bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_left"):
+			top_manipulator_pwm -= 100 * PWM_COEFFICIENT
+		if Input.is_action_pressed("manipulator_right"):
+			top_manipulator_pwm += 100 * PWM_COEFFICIENT
 	
-	if Input.is_action_pressed("manipulator_left"):
-		bottom_manipulator_pwm -= 95 * PWM_COEFFICIENT
-		top_manipulator_pwm -= 100 * PWM_COEFFICIENT
-	if Input.is_action_pressed("manipulator_right"):
-		bottom_manipulator_pwm += 90 * PWM_COEFFICIENT
-		top_manipulator_pwm += 100 * PWM_COEFFICIENT
 	
 #	rotation.y *= 0.3
 	rotation.x *= pow(abs(rotation.x), 1.0)
@@ -315,5 +374,6 @@ func _process(delta):
 			"direct_motors": $DirectMotorsButton.pressed,
 			"bottom_manip_pwm": int(bottom_manipulator_pwm),
 			"top_manip_pwm": int(top_manipulator_pwm),
+			"power_scale" : power_scale
 		}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

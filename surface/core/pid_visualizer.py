@@ -68,7 +68,7 @@ class PIDVisualizer(QMainWindow):
         self.time_data[-1] = self.current_time
 
         try:
-            pitch, roll, yaw = pickle.load(open("rot.pkl", 'rb'))
+            roll,pitch, yaw = pickle.load(open("rot.pkl", 'rb'))
             setpoint = pickle.load(open("setpoint.pkl", 'rb'))
         except:
             current_position = 0
