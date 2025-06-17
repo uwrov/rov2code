@@ -7,7 +7,7 @@ from matplotlib.widgets import CheckButtons
 
 def main():
     user_input = input("Enter log CSV filename (or press Enter for most recent): ").strip()
-    plt.rc('font', size = 20)
+    plt.rc('font', size = 8)
     if user_input:
         filename = user_input
     else:
