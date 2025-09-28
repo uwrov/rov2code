@@ -15,8 +15,10 @@ import math
 
 logger = ROVLogger()
 
-BOTTOM_MANIP_PIN = 11
-TOP_MANIP_PIN = 9
+BOTTOM_MANIP_PIN = 9
+TOP_MANIP_PIN = 11
+
+LIGHT_PIN = 7
 
 TIME_TO_RAMP = 1.5
 TIME_PER_CYCLE = 0.1
@@ -35,6 +37,7 @@ class Core():
         self.direct_motors = False
         self.bottom_manip_pwm = 1500
         self.top_manip_pwm = 1500
+        self.light_on = False
 
         self.angular_acceleration, self.accelerometer, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector = None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
@@ -52,7 +55,6 @@ class Core():
     async def update_sensors(self, packet):
         # print("Sensor update keys:", packet.keys())
         for key, value in packet.items():
-            # print(f"Setting {key}: {value}")
             if hasattr(self, key):
                 setattr(self, key, value)
         await self.interface.notify_sensor_update()
@@ -130,9 +132,6 @@ class Core():
         delta_pwms = np.subtract(pwms, self.prev_pwms)
         delta_pwms = np.clip(delta_pwms, -RAMP_LIMIT, +RAMP_LIMIT)
 
-        pwms = np.add(self.prev_pwms, delta_pwms).astype(int).tolist()
-        self.prev_pwms = pwms
-
         pin_pwms = [{
             'number': THRUSTER_CFG[i]['pin'],
             'value': pwms[i]
@@ -148,6 +147,10 @@ class Core():
             'value': self.top_manip_pwm,
         })
 
+        pin_pwms.append({
+            'number': LIGHT_PIN,
+            'value': 1 if self.light_on else 0
+        })
 
         # ---- IMU LOGGING ----
         timestamp = time.time()
