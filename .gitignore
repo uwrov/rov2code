@@ -1,1 +1,8 @@
 surface/logs/*
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
