@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shipwreck Lookup</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .filter-container { display: flex; gap: 10px; margin-bottom: 20px; }
+    .filter-btn { border: 2px solid #ccc; padding: 5px; cursor: pointer; text-align: center; }
+    .filter-btn.selected { border-color: #007BFF; }
+    .filter-btn img { width: 60px; height: 60px; display: block; margin: 0 auto 5px; }
+    .results-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 10px; margin-bottom:20px; }
+    .ship-card { cursor: pointer; text-align: center; }
+    .ship-card img { width: auto; height: 100px; display: block; margin: 0 auto; }
+    .ship-details { border-top: 1px solid #ccc; padding-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Shipwreck Lookup</h1>
+  <div>
+    <h3>Filter by Ship Type</h3>
+    <div id="type-filters" class="filter-container"></div>
+  </div>
+  <div>
+    <h3>Filter by Cargo</h3>
+    <div id="cargo-filters" class="filter-container"></div>
+  </div>
+  <div>
+    <h3>Matching Ships</h3>
+    <div id="results" class="results-container"></div>
+  </div>
+  <div id="details" class="ship-details"></div>
+<script>
+// Ship data sourced from the Shipwreck Handbook fileciteturn0file0
+const ships = [
+  {
+    id: 'albany',
+    name: 'Albany',
+    type: 'Paddlewheel',
+    cargo: 'Coal',
+    length: '1.97 meters',
+    blurb: 'The Albany was a paddlewheel steamer built in 1846 to carry settlers and freight. In November 1853 she ran aground in Lake Huron and eventually broke apart. Shipwreck length: 1.97 meters.',
+    image: 'images/ships/albany.png'
+  },
+  {
+    id: 'cornelia_b_windiate',
+    name: 'Cornelia B. Windiate',
+    type: 'Schooner',
+    cargo: 'Wheat',
+    length: '1.27 meters',
+    blurb: 'Built in 1874, this three-masted schooner disappeared in late 1875 en route from Milwaukee to Buffalo, likely lost to ice accumulation. Shipwreck length: 1.27 meters.',
+    image: 'images/ships/cornelia_b_windiate.png'
+  },
+  {
+    id: 'florida',
+    name: 'Florida',
+    type: 'Freighter',
+    cargo: 'Wheat',
+    length: '1.97 meters',
+    blurb: 'Launched in 1889, Florida collided with the George Roby in dense fog and sank quickly while carrying wheat. Shipwreck length: 1.97 meters.',
+    image: 'images/ships/florida.png'
+  },
+  {
+    id: 'ironton',
+    name: 'Ironton',
+    type: 'Schooner',
+    cargo: 'Bricks',
+    length: '1.73 meters',
+    blurb: 'This 1873 schooner carrying bricks broke free while under tow and collided with the freighter Ohio in 1894, sinking in about half an hour. Shipwreck length: 1.73 meters.',
+    image: 'images/ships/ironton.png'
+  },
+  {
+    id: 'mf_merrick',
+    name: 'M.F. Merrick',
+    type: 'Schooner',
+    cargo: 'Sand',
+    length: '1.48 meters',
+    blurb: 'Built in 1873, the Merrick sank in 1889 after a collision with the R.P. Ranney in fog while carrying furnace sand. Shipwreck length: 1.48 meters.',
+    image: 'images/ships/mf_merrick.png'
+  },
+  {
+    id: 'marine_city',
+    name: 'Marine City',
+    type: 'Paddlewheel',
+    cargo: 'Bricks',
+    length: '1.48 meters',
+    blurb: 'Launched in 1866, Marine City caught fire and burned to the waterline while loaded with bricks and passengers. Shipwreck length: 1.48 meters.',
+    image: 'images/ships/marine_city.png'
+  },
+  {
+    id: 'new_orleans',
+    name: 'New Orleans',
+    type: 'Paddlewheel',
+    cargo: 'Sand',
+    length: '1.27 meters',
+    blurb: 'Originally built in 1838 as Vermillion, rebuilt after a fire in 1842, and later grounded in 1849 while carrying passengers and furnace sand. Shipwreck length: 1.27 meters.',
+    image: 'images/ships/new_orleans.png'
+  },
+  {
+    id: 'norman',
+    name: 'Norman',
+    type: 'Freighter',
+    cargo: 'Coal',
+    length: '1.73 meters',
+    blurb: 'This 1890 bulk freighter carrying coal sank in 1895 after a collision with the Jack of Kingston. Shipwreck length: 1.73 meters.',
+    image: 'images/ships/norman.png'
+  },
+  {
+    id: 'ohio',
+    name: 'Ohio',
+    type: 'Freighter',
+    cargo: 'Wheat',
+    length: '1.48 meters',
+    blurb: 'Built in 1873 and loaded with wheat, Ohio sank in rough weather after colliding with the schooner Ironton in 1894. Shipwreck length: 1.48 meters.',
+    image: 'images/ships/ohio.png'
+  }
+];
+
+const types = [...new Set(ships.map(s => s.type))];
+const cargos = [...new Set(ships.map(s => s.cargo))];
+let selectedType = null;
+let selectedCargo = null;
+
+function slugify(text) {
+  return text.toString().toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^\w\-]+/g, '');
+}
+
+function createFilterButtons(items, containerId, filterKey) {
+  const container = document.getElementById(containerId);
+  items.forEach(item => {
+    const btn = document.createElement('div');
+    btn.className = 'filter-btn';
+    btn.dataset.value = item;
+
+    const img = document.createElement('img');
+    img.src = `images/filters/${filterKey}-${slugify(item)}.png`;
+    img.alt = item;
+
+    const label = document.createElement('span');
+    label.textContent = item;
+
+    btn.appendChild(img);
+    btn.appendChild(label);
+
+    btn.addEventListener('click', () => {
+      if (filterKey === 'type') {
+        selectedType = selectedType === item ? null : item;
+      } else {
+        selectedCargo = selectedCargo === item ? null : item;
+      }
+      updateSelectionUI(container, selectedType, selectedCargo, filterKey);
+      renderResults();
+    });
+
+    container.appendChild(btn);
+  });
+}
+
+function updateSelectionUI(container, selType, selCargo, filterKey) {
+  Array.from(container.children).forEach(btn => {
+    const value = btn.dataset.value;
+    btn.classList.toggle('selected', (
+      filterKey === 'type' && selType === value) ||
+      (filterKey === 'cargo' && selCargo === value)
+    );
+  });
+}
+
+function renderTypeFilters() { createFilterButtons(types, 'type-filters', 'type'); }
+function renderCargoFilters() { createFilterButtons(cargos, 'cargo-filters', 'cargo'); }
+
+function renderResults() {
+  const results = document.getElementById('results');
+  results.innerHTML = '';
+  const filtered = ships.filter(s =>
+    (!selectedType || s.type === selectedType) &&
+    (!selectedCargo || s.cargo === selectedCargo)
+  );
+
+  // Auto-select if only one match
+  if (filtered.length === 1) {
+    showDetails(filtered[0]);
+  } else if (filtered.length === 0) {
+    document.getElementById('details').innerHTML = '';
+  }
+
+  filtered.forEach(ship => {
+    const card = document.createElement('div');
+    card.className = 'ship-card';
+    card.innerHTML = `
+      <img src="${ship.image}" alt="${ship.name}">
+      <div>${ship.name}</div>
+    `;
+    card.addEventListener('click', () => showDetails(ship));
+    results.appendChild(card);
+  });
+}
+
+function showDetails(ship) {
+  const details = document.getElementById('details');
+  details.innerHTML = `
+    <h2>${ship.name}</h2>
+    <img src="${ship.image}" alt="${ship.name}" style="width:auto;height:100px;">
+    <p><strong>Type:</strong> ${ship.type}</p>
+    <p><strong>Cargo:</strong> ${ship.cargo}</p>
+    <p><strong>Length:</strong> ${ship.length}</p>
+    <p>${ship.blurb}</p>
+  `;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderTypeFilters();
+  renderCargoFilters();
+  renderResults();
+});
+</script>
+</body>
+</html>

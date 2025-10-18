@@ -7,6 +7,9 @@ from .rov_config import rov_center_of_mass
 # thruster order: ['forward_left', 'forward_right', 'forward_top', 'sideways_top', 'up_left', 'up_right']
 # looks like a reasonable max on motor power is 3.87757526
 
+#direction corresponds to ESC wiring. When thruster receives high PWM (>1500), clockwise spin when viewed from the back is defined as direction 1
+
+
 control_mat = np.zeros((6, 6))
 
 # first three rows of matrix are x, y, z force contributions

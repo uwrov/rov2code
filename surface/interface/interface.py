@@ -18,7 +18,6 @@ class Interface():
     def set_task(self, task: 'Task'):
         self.task = task
 
-
     def notify_new_sensor_data(self):
         print(f'accelerometer: {self.core.accelerometer}, gyro: {self.core.gyroscope}')
 
@@ -27,12 +26,11 @@ class Interface():
         async for message in self.websocket:
             data = json.loads(str(message)[2:-1])
             result = json.dumps(data)
-            await self.core.consume_interface_websocket(data['translate'], data['translation'], data['rotation'], data['direct_motors'], data['servo_pwm'])
-
+            await self.core.consume_interface_websocket(data)
 
     async def notify_sensor_update(self):
         if self.websocket != None:
             await self.websocket.send(json.dumps({
                 'accelerometer': self.core.accelerometer,
-                'gyroscope': self.core.gyroscope
+                'quaternion': self.core.quaternion
             }))

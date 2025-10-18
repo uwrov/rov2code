@@ -10,6 +10,22 @@ var rov_orientation: Basis
 var target_orientation: Basis
 #var last_time = 0.0
 #var time = 0.0
+var power_scale := 1.8 setget set_power_scale
+var power_adjust_hold_time := 0.0
+var power_repeat_delay := 0.2  # Seconds between repeated steps
+var manipulator_repeat_delay := 0.5
+var manipulator_index = 1
+var totalManipulators = 5
+
+var mode_names = {
+	1: "Dual Axis Manipulator Mode",
+	2: "Single Toggle Manipulator Mode Top",
+	3: "Single Toggle Manipulator Mode Bottom",
+	4: "Thermistor Manipulator Mode",
+	5: "Syringe Manipulator Mode"
+}
+
+var light_on = false
 
 func _ready():
 	_client.connect("connection_closed", self, "_closed")
@@ -45,28 +61,33 @@ func basis_xform(operator: Basis, input: Basis):
 var derivative = Vector3.ZERO
 var imu_last_time = -1.0
 
+func set_power_scale(value: float) -> void:
+	power_scale = clamp(value, 0.05, 3.5)
+	$PowerBoost.text = "Power scale: %.3f" % power_scale
+
 func _on_data():
 	var data = _client.get_peer(1).get_packet().get_string_from_utf8()
 	print("Got data from server: ", data)
 	var parsed = JSON.parse(data).result
 #	$Label.text = data
 #	$Label.text = str(parsed)
+# warning-ignore:unused_variable
 	var acc  = parsed["accelerometer"]
-	var gyro = parsed["gyroscope"]
+	var gyro = parsed["quaternion"]
 #	$Label.text = str(acc)
 	# IMU: x left, y forward, z up
 	# ROV: x left, y backward, z up
 	# Godot: x left, y up, z forward
-	$Label.text = str(gyro)
 	if gyro[0] == null:
-		$LabelDebug.text = str(gyro)
+		$Label.text = str(gyro)
+		#$LabelDebug.text = str(gyro)
 		return
-	var gyrotext = "%.5f %.5f %.5f\n%.5f %.5f %.5f %.5f" % [acc[0], acc[1], acc[2], gyro[0], gyro[1], gyro[2], gyro[3]]
-	$Label.text = gyrotext
+	# var gyrotext = "%.5f %.5f %.5f\n%.5f %.5f %.5f %.5f" % [acc[0], acc[1], acc[2], gyro[0], gyro[1], gyro[2], gyro[3]]
+	# $Label.text = gyrotext
 	
-	if not acc[0]:
-		$LabelDebug.text = gyrotext
-	
+		# if not acc[0]:
+		# 	$LabelDebug.text = gyrotext
+
 	var prev_rov_orientation = rov_orientation
 	
 	# convert quaternion from IMU to basis
@@ -75,9 +96,9 @@ func _on_data():
 	# swap yaw and pitch
 	var old_x = rov_orientation.x
 	var old_y = rov_orientation.y
-	rov_orientation.x = old_y
-	rov_orientation.y = old_x
-
+	rov_orientation.x = -old_y
+	rov_orientation.y = -old_x
+	
 	# rotate to correct "up" direction
 	rov_orientation = rov_orientation.rotated(Vector3(0.0, 0.0, -1.0), PI / 2)
 	
@@ -138,7 +159,6 @@ func _on_data():
 #	if gravity_calibration_rotation:
 #		rov_orientation = rov_orientation.rotated(gravity_calibration_rotation, gravity_calibration_rotation.length())
 	
-	
 	var euler = rov_orientation.get_euler()
 
 	$Label4.text = "Euler X: " + str(euler.x) + "\nEuler Y: " + str(euler.y) + "\nEuler Z: " + str(euler.z)
@@ -149,11 +169,44 @@ var rotation_boost_i = Vector3.ZERO
 
 var error_integral = Vector3.ZERO
 
+var spinPWM = 1500
 func _process(delta):
 	
 #	time += delta
 	_client.poll()
 	
+	var holding_increase := Input.is_action_pressed("power_increase")
+	var holding_decrease := Input.is_action_pressed("power_decrease")
+	var next_manipulator := Input.is_action_pressed("manipulator_next")
+	var prev_manipulator := Input.is_action_pressed("manipulator_previous")
+
+	if holding_increase or holding_decrease:
+		power_adjust_hold_time -= delta
+		if power_adjust_hold_time <= 0.0:
+			if holding_increase:
+				set_power_scale(power_scale * 1.1)
+			elif holding_decrease:
+				set_power_scale(power_scale / 1.1)
+			power_adjust_hold_time = power_repeat_delay
+	elif next_manipulator or prev_manipulator:
+		power_adjust_hold_time -= delta
+		if power_adjust_hold_time <= 0.0:
+			manipulator_index += 1 if next_manipulator else -1
+				
+			if manipulator_index > totalManipulators:
+				manipulator_index = 1
+			elif manipulator_index < 1:
+				manipulator_index = totalManipulators
+				
+			power_adjust_hold_time = manipulator_repeat_delay
+			
+		$LabelDebug.text = "Manipulator Mode: %s (Index: %d)" % [
+			mode_names.get(manipulator_index, "Unknown"), 
+			manipulator_index
+		]
+	else:
+		power_adjust_hold_time = 0  # Reset when not held
+
 	
 #	var translation: Vector3 = Vector3.FORWARD
 	
@@ -187,6 +240,7 @@ func _process(delta):
 #		rotation_boost += Vector3(0.0, 0.0, y_ctrl)
 #		$LabelSASState.text += str(y_ctrl)
 #		pass
+		print("foo")
 		
 		
 		rotation_boost = Vector3.ZERO
@@ -256,14 +310,57 @@ func _process(delta):
 
 #		rotation += rotation_boost
 	
-	var manipulator_pwm = 1500
-	if Input.is_action_pressed("manipulator_close"):
-#		manipulator_pwm -= 50
-#		manipulator_pwm -= 100
-		manipulator_pwm -= 50
-	if Input.is_action_pressed("manipulator_open"):
-		manipulator_pwm += 100
-#		manipulator_pwm += 80
+	var bottom_manipulator_pwm = 1500
+	var top_manipulator_pwm = 1500
+
+	var OPEN_PWM = 75
+	var PWM_COEFFICIENT = 1
+	if manipulator_index == 1:
+		if Input.is_action_pressed("manipulator_close"):
+			bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_open"):
+			bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
+		
+		if Input.is_action_pressed("manipulator_left"):
+			bottom_manipulator_pwm -= 100 * PWM_COEFFICIENT #90 is ok
+			top_manipulator_pwm -= 115 * PWM_COEFFICIENT
+		if Input.is_action_pressed("manipulator_right"):
+			bottom_manipulator_pwm += 115 * PWM_COEFFICIENT #95 is ok
+			top_manipulator_pwm += 100 * PWM_COEFFICIENT
+		#bottom_manipulator_pwm += (bottom_manipulator_pwm - 1500) * 0.5
+		#top_manipulator_pwm += (top_manipulator_pwm - 1500) * 0.5
+	elif manipulator_index == 2 or manipulator_index == 3:
+		if Input.is_action_pressed("manipulator_close"):
+			spinPWM = 1500
+		if Input.is_action_pressed("manipulator_open"):
+			spinPWM = 1600
+		if Input.is_action_pressed("manipulator_left"):
+			spinPWM = 1400
+
+		if manipulator_index == 2:
+			top_manipulator_pwm = spinPWM
+		else:
+			bottom_manipulator_pwm = spinPWM
+	elif manipulator_index == 4:
+		if Input.is_action_pressed("manipulator_close"):
+			bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_open"):
+			bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_left"):
+			top_manipulator_pwm -= 100 * PWM_COEFFICIENT
+		if Input.is_action_pressed("manipulator_right"):
+			top_manipulator_pwm += 100 * PWM_COEFFICIENT
+	elif manipulator_index == 5:
+		if Input.is_action_pressed("manipulator_close"):
+			top_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
+		if Input.is_action_pressed("manipulator_open"):
+			top_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
+			
+	
+	if Input.is_action_pressed("light_on"):
+		light_on = true
+	else:
+		light_on = false
 	
 	
 #	rotation.y *= 0.3
@@ -294,9 +391,7 @@ func _process(delta):
 	$"%RotationYValue".text = str("%0.3f" % rotation.y)
 	$"%RotationZValue".text = str("%0.3f" % rotation.z)
 	
-#	var servo_pwm = $ServoPWMSlider.value
-	var servo_pwm = manipulator_pwm
-	$ServoCurrentPWMLabel.text = str(servo_pwm)
+	$ServoCurrentPWMLabel.text = str(bottom_manipulator_pwm)
 	
 	translation *= Vector3(1.0, 2.5, 2.5)
 #	translation *= Vector3(1.0, 5.0, 3.0)
@@ -309,6 +404,8 @@ func _process(delta):
 			"translation": [translation.x, translation.y * 5.0, translation.z * 3.0],
 			"rotation": [rotation.x, rotation.y, rotation.z],
 			"direct_motors": $DirectMotorsButton.pressed,
-			"servo_pwm": int(servo_pwm),
-		}
+			"bottom_manip_pwm": int(bottom_manipulator_pwm),
+			"top_manip_pwm": int(top_manipulator_pwm),
+			"power_scale" : power_scale,
+			"light_on": light_on}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())
