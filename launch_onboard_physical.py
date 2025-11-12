@@ -1,6 +1,17 @@
 import pathlib
 import subprocess
 
+vacuum = input(f"Has ROV passed a vacuum test since last opening? y/n: ")
+if (vacuum.lower() != 'y'):
+	raise Exception("pull vacuum to -14psi and hold for 10 minutes.")
+guards = input(f"Are all 12 thruster guards present and undamaged? y/n: ")
+if (guards.lower() != "y"):
+	raise Exception("install replacement guards. Can be found on cart mini-shelf")
+rigid = input(f"Are all 6 thrusters mounted rigidly to the frame? y/n: ")
+if (rigid.lower() != "y"):
+	raise Exception("Tighten screws, or replace motor mount. Replacements can be found on cart.")
+
+
 # our ROV uses a raspberry pi (linux), so we don't need to have windows-specific workarounds for physical onboard launch
 
 result = subprocess.run(['arp', '-n'], stdout=subprocess.PIPE)

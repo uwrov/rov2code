@@ -53,7 +53,13 @@ async def consumer_handler(websocket: ClientConnection, rov: 'ROV'):
         data = json.loads(message)
         if data['type'] == 'set_pin_pwms':
             for pin in data['pins']:
-                rov.set_pin_pwm(pin['number'], pin['value'])
+                value = pin['value']
+                if value == 1 or value == 0:
+                    print(pin['number'])
+                    print(value)
+                    rov.set_pin(pin['number'], value)
+                else:
+                    rov.set_pin_pwm(pin['number'], pin['value'])
             await rov.flush_pin_pwms()
         else:
             print(f'Invalid type {data.type} for message: {message}')

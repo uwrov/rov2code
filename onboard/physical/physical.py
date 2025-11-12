@@ -14,7 +14,13 @@ import ms5837
 class ROV:
     def __init__(self):
         self.last_timestamp = time.time()
+<<<<<<< Updated upstream
         self.pi = pigpio.pi()
+=======
+        self.last_gyro = None
+        self.pi = pigpio.pi()
+        self.pi.set_mode(7, pigpio.OUTPUT)
+>>>>>>> Stashed changes
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
             self.bno = adafruit_bno055.BNO055_I2C(i2c, address=0x29)
@@ -83,12 +89,38 @@ class ROV:
         # print(number, value)
         self.pi.set_servo_pulsewidth(number, value)
 
+    def set_pin(self, number: int, value: bool):
+        self.pi.write(number, pigpio.HIGH if value else pigpio.LOW)
+        print(number)
+        print(value)
+
 
     # unnecessary for physical ROV
     async def flush_pin_pwms(self):
         pass
 
+    def get_linear_acceleration(self) -> dict:
+        if self.bno is None:
+            return {}
 
+        accel = self.bno.linear_acceleration
+        if self.secondary_bno is not None:
+            secondary_accel = self.secondary_bno.linear_acceleration
+            if secondary_accel[0] is not None:
+                secondary_accel[1] *= -1
+                secondary_accel[2] *= -1
+                accel = np.mean((accel, secondary_accel), axis=0)
+
+        return {"accelerometer": accel}
+
+    # Not good!
+
+
+    def get_linear_velocity(self) -> dict:
+        if self.bno is None:
+            return {}
+
+<<<<<<< Updated upstream
     def get_linear_acceleration(self) -> dict:
         if self.bno is None:
             return {}
@@ -108,6 +140,8 @@ class ROV:
     def get_linear_velocity(self) -> dict:
         if self.bno is None:
             return {}
+=======
+>>>>>>> Stashed changes
         # Accelerometer data (in meters per second squared)
         acceleration = np.array(self.bno.linear_acceleration)
 
@@ -179,6 +213,28 @@ class ROV:
             return {}
 
         return {"gravity_vector": [-vec[0], -vec[1], vec[2]]}
+<<<<<<< Updated upstream
+=======
+    def get_angular_acceleration(self) -> dict:
+        if self.bno is None:
+            return {}
+        
+        current_gyro = self.bno.gyro
+        now = time.time()
+        
+        if current_gyro is None or current_gyro[0] is None:
+            return {}
+        dt = now - self.last_timestamp if self.last_timestamp else 0.01
+        if self.last_gyro is not None and dt > 0:
+            angular_accel = [(curr - prev) / dt for curr, prev in zip(current_gyro, self.last_gyro)]
+        else:
+            angular_accel = [0.0, 0.0, 0.0]
+
+            self.last_gyro = current_gyro
+            self.last_timestamp = now
+
+        return {"angular_acceleration": angular_accel}
+>>>>>>> Stashed changes
 
     def get_angular_velocity(self) -> dict:
         if self.bno is None:
@@ -225,7 +281,11 @@ class ROV:
         readings.append(self.get_linear_acceleration())
         readings.append(self.get_depth())
         readings.append(self.get_gravity_vector())
+<<<<<<< Updated upstream
 
+=======
+        readings.append(self.get_angular_acceleration())
+>>>>>>> Stashed changes
         # Will be a list of (maybe empty) dictionaries of readings to report
         readings_dict = {}
         for reading in readings:
