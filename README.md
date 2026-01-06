@@ -20,7 +20,7 @@ On Windows, look for your 'Environment Variables' setting menu, click on the Pat
 On Linux:
 
 ```
-wget https://downloads.tuxfamily.org/godotengine/3.5.1/Godot_v3.5.1-stable_x11.64.zip
+wget https://github.com/godotengine/godot/releases/download/3.5.1-stable/Godot_v3.5.1-stable_x11.64.zip
 unzip Godot_v3.5.1-stable_x11.64.zip
 cp Godot_v3.5.1-stable_x11.64 ~/.local/bin/godot
 ```
