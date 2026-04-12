@@ -37,39 +37,40 @@ imu_position  = [
 # mass, kg
 rov_mass=8.17
 
-# name: human-readable name
+# name: human-readable name #position front
 # location: position in ROV's coordinate system, units meters
 # orientation: unit vector representing forward direction of thruster
 # pin: raspberry pi pin on which thruster is connected
 # model: 't-#' (new name, forgot to write down what it was)
 # handing: CW thruster prop (default) is 1, CCW is -1
+    # purple = -1, blue = 1 (tape)
 # direction: corrects for ESC wiring if thruster runs in the wrong direction.
 
 # thruster locations just given in terms of CAD labelling (might need to reswitch later assuming they are the same)
 thruster_config = [
     {
-        'name': 'forward_left',
+        'name': 'forward_left', #top
         # 'location': [0.13354, -0.28541, -0.043956],
         'location': [0.008588, 0.012029, 0.201448],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 19,
         'model': 't-#',
-        'direction': -1,
+        'direction': 1,
         'handing' : 1,
         'letter': 'A',
     },
     {
-        'name': 'forward_right',
+        'name': 'forward_right', #bottom
         'location': [0.079666, 0.011938, -0.105854],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 12,
         'model': 't-#',
-        'direction': -1,
-        'handing' : 1,
+        'direction': 1,
+        'handing' : -1,
         'letter': 'D',
     },
     {
-        'name': 'forward_top',
+        'name': 'forward_top', #right up
         'location': [0.154729, 0.011938, 0.129965],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 16,
@@ -79,7 +80,7 @@ thruster_config = [
         'letter': 'E',
     },
     {
-        'name': 'sideways_top', #4
+        'name': 'sideways_top', #left up
         # 'location': [-0.001,-0.222,0.14],
         'location': [-0.152573,0.014938, 0.869965],
         'orientation': [1.0, 0.0, 0.0],
@@ -90,23 +91,23 @@ thruster_config = [
         'letter': 'F',
     },
     {
-        'name': 'up_left', #5
+        'name': 'up_left', #rigth mid
         'location': [0.154729, 0.109131, 0.047902],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 25,
         'model': 't-#',
-        'direction': -1,
-        'handing' : 1,
+        'direction': 1,
+        'handing' : -1,
         'letter': 'C',
     },
     {
-        'name': 'up_right',
+        'name': 'up_right', #left mid
         'location': [-0.152573,0.109131,0.047902],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 26,
         'model': 't-#',
-        'direction': -1 ,
-        'handing' : -1,
+        'direction': 1 ,
+        'handing' : 1,
         'letter': 'B',
     },
 ]
