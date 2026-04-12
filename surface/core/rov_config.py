@@ -41,68 +41,70 @@ rov_mass=8.17
 # location: position in ROV's coordinate system, units meters
 # orientation: unit vector representing forward direction of thruster
 # pin: raspberry pi pin on which thruster is connected
-# model: 't-100' or 't-200' depending on which Blue Robotics thruster it is
+# model: 't-#' (new name, forgot to write down what it was)
 # handing: CW thruster prop (default) is 1, CCW is -1
 # direction: corrects for ESC wiring if thruster runs in the wrong direction.
+
+# thruster locations just given in terms of CAD labelling (might need to reswitch later assuming they are the same)
 thruster_config = [
     {
         'name': 'forward_left',
         # 'location': [0.13354, -0.28541, -0.043956],
-        'location': [0.13854, -0.2987, -0.044],
+        'location': [0.008588, 0.012029, 0.201448],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 19,
-        'model': 't-200',
+        'model': 't-#',
         'direction': -1,
         'handing' : 1,
         'letter': 'A',
     },
     {
         'name': 'forward_right',
-        'location': [-0.13854, -0.2987, -0.044],
+        'location': [0.079666, 0.011938, -0.105854],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 12,
-        'model': 't-200',
+        'model': 't-#',
         'direction': -1,
         'handing' : 1,
         'letter': 'D',
     },
     {
         'name': 'forward_top',
-        'location': [-0.00000, -0.01075, 0.145052],
+        'location': [0.154729, 0.011938, 0.129965],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 16,
-        'model': 't-200',
+        'model': 't-#',
         'direction': 1,
         'handing' : -1,
         'letter': 'E',
     },
     {
-        'name': 'sideways_top',
+        'name': 'sideways_top', #4
         # 'location': [-0.001,-0.222,0.14],
-        'location': [0.00525,-0.100,-0.13505],
+        'location': [-0.152573,0.014938, 0.869965],
         'orientation': [1.0, 0.0, 0.0],
         'pin': 10,
-        'model': 't-200',
+        'model': 't-#',
         'direction': 1,
         'handing' : 1,
         'letter': 'F',
     },
     {
-        'name': 'up_left',
-        'location': [0.13850, -0.1840, 0.03875],
+        'name': 'up_left', #5
+        'location': [0.154729, 0.109131, 0.047902],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 25,
-        'model': 't-200',
+        'model': 't-#',
         'direction': -1,
         'handing' : 1,
         'letter': 'C',
     },
     {
         'name': 'up_right',
-        'location': [-0.13855, -0.184,0.038751],
+        'location': [-0.152573,0.109131,0.047902],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 26,
-        'model': 't-200',
+        'model': 't-#',
         'direction': -1 ,
         'handing' : -1,
         'letter': 'B',
