@@ -35,6 +35,9 @@ class Core():
         self.direct_motors = False
         self.bottom_manip_pwm = 1500
         self.top_manip_pwm = 1500
+        
+        self.gantry_x = 0.0
+        self.gantry_y = 0.0
 
         self.angular_acceleration, self.accelerometer, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector = None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
@@ -81,6 +84,20 @@ class Core():
             'number': THRUSTER_CFG[i]['pin'],
             'value': pwms[i]
         } for i in range(len(pwms))]
+
+        GANTRY_X_PINS = [0, 1]
+        GANTRY_Y_PINS = [2, 3]
+        GANTRY_PWM_SCALING_FACTOR = 100
+
+        pin_pwms.extend([{
+            'number': pin,
+            'value': 1500 + self.gantry_x * GANTRY_PWM_SCALING_FACTOR
+        } for pin in GANTRY_X_PINS])
+
+        pin_pwms.extend([{
+            'number': pin,
+            'value': 1500 + self.gantry_y * GANTRY_PWM_SCALING_FACTOR
+        } for pin in GANTRY_Y_PINS])
 
         return pin_pwms
 
