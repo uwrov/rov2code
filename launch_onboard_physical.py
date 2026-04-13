@@ -22,7 +22,8 @@ for line in output:
         SURFACE_STATION_IP_ADDRESS = parts[0]
         break
 
-#SURFACE_STATION_IP_ADDRESS = '172.25.250.2'
+SURFACE_STATION_IP_ADDRESS = '172.25.250.2'
+#print(SURFACE_STATION_IP_ADDRESS)
 
 onboard_cwd = (pathlib.Path(__file__).parent / 'onboard').resolve()
 onboard_proc = subprocess.Popen(['python3', 'onboard.py', '--physical',

@@ -1,13 +1,12 @@
-import pigpio
 import time
 import busio
 import board
 import time
+from gpiozero import Servo
 
 class ROV:
     def __init__(self):
-        self.last_timestamp = time.time()
-        self.pi = pigpio.pi()
+        self.servos = {}
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
         except Exception as e:
@@ -18,12 +17,11 @@ class ROV:
     # value = PWM value
     def set_pin_pwm(self, number: int, value: int): 
         # print(number, value)
-        self.pi.set_servo_pulsewidth(number, value)
+        if number not in self.servos:
+            self.servos[number] = Servo(number)
 
-    def set_pin(self, number: int, value: bool):
-        self.pi.write(number, pigpio.HIGH if value else pigpio.LOW)
-        print(number)
-        print(value)
+        normalized = (value - 1500) / 500
+        self.servos[number].value = max(min(normalized, 1), -1)
 
     # unnecessary for physical ROV
     async def flush_pin_pwms(self):
