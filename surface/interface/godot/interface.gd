@@ -15,7 +15,6 @@ var power_adjust_hold_time := 0.0
 var power_repeat_delay := 0.2  # Seconds between repeated steps
 var manipulator_repeat_delay := 0.5
 var manipulator_index = 1
-var totalManipulators = 6
 
 var mode_names = {
 	1: "Dual Axis Manipulator Mode",
@@ -23,8 +22,10 @@ var mode_names = {
 	3: "Single Toggle Manipulator Mode Bottom",
 	4: "Thermistor Manipulator Mode",
 	5: "Syringe Manipulator Mode",
-	6: "Gantry Mode"
+	6: "Gantry Mode",
+	7: "Arm Mode",
 }
+var totalManipulators = mode_names.size()
 
 var light_on = false
 
@@ -315,6 +316,7 @@ func _process(delta):
 	var top_manipulator_pwm = 1500
 	var gantry_x = 0.0
 	var gantry_y = 0.0
+	var buoyancy_arm = 0.0
 
 	var OPEN_PWM = 75
 	var PWM_COEFFICIENT = 1
@@ -363,16 +365,17 @@ func _process(delta):
 			gantry_x = 1.0
 		elif Input.is_action_pressed("manipulator_open"):
 			gantry_x = -1.0
-		else:
-			gantry_x = 0.0
 		
 		if Input.is_action_pressed("manipulator_right"):
 			gantry_y = 1.0
 		elif Input.is_action_pressed("manipulator_close"):
 			gantry_y = -1.0
-		else:
-			gantry_y = 0.0
-	
+	elif manipulator_index == 7:
+		if Input.is_action_pressed("manipulator_left"):
+			buoyancy_arm = 1.0
+		elif Input.is_action_pressed("manipulator_open"):
+			buoyancy_arm = -1.0
+
 	if Input.is_action_pressed("light_on"):
 		light_on = true
 	else:
@@ -425,5 +428,6 @@ func _process(delta):
 			"power_scale" : power_scale,
 			"gantry_x": gantry_x,
 			"gantry_y": gantry_y,
+			"buoyancy_arm": buoyancy_arm,
 			"light_on": light_on}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

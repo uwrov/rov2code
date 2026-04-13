@@ -38,6 +38,7 @@ class Core():
         
         self.gantry_x = 0.0
         self.gantry_y = 0.0
+        self.buoyancy_arm = 0.0
 
         self.angular_acceleration, self.accelerometer, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector = None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
@@ -85,19 +86,18 @@ class Core():
             'value': pwms[i]
         } for i in range(len(pwms))]
 
-        GANTRY_X_PINS = [0, 1]
-        GANTRY_Y_PINS = [2, 3]
+        GANTRY_PINS = [0, 1]
         GANTRY_PWM_SCALING_FACTOR = 100
 
-        pin_pwms.extend([{
-            'number': pin,
-            'value': 1500 + self.gantry_x * GANTRY_PWM_SCALING_FACTOR
-        } for pin in GANTRY_X_PINS])
+        top_right_pwm = int((self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR)
+        top_left_pwm = int((-self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR) 
 
-        pin_pwms.extend([{
-            'number': pin,
-            'value': 1500 + self.gantry_y * GANTRY_PWM_SCALING_FACTOR
-        } for pin in GANTRY_Y_PINS])
+        pin_pwms.append({'number': GANTRY_PINS[0], 'value': top_right_pwm})
+        pin_pwms.append({'number': GANTRY_PINS[1], 'value': top_left_pwm})
+
+        BUOYANCY_ARM_PIN = 2
+        BUOYANCY_ARM_PWM_SCALING_FACTOR = 100
+        pin_pwms.append({'number': BUOYANCY_ARM_PIN, 'value': int(self.buoyancy_arm * BUOYANCY_ARM_PWM_SCALING_FACTOR)})
 
         return pin_pwms
 
