@@ -12,11 +12,12 @@
 # https://cad.onshape.com/documents/9c4723f7c69c6ee6cd4e6801/v/24d1f3e58de7b40f5f2fb6c2/e/c7bd78bf5f17a1d0aef05f66 
 
 #values in meters
+# this is currently being calculated without knowing materials in CAD
 rov_center_of_mass = [
-    0.002,
+    0.002023,
     # -0.178,
-    -.158,
-    0.007
+    -0.133479,
+    0.01563
 ]
 imu_position  = [
     0,
@@ -47,11 +48,12 @@ rov_mass=8.17
 # direction: corrects for ESC wiring if thruster runs in the wrong direction.
 
 # thruster locations just given in terms of CAD labelling (might need to reswitch later assuming they are the same)
+# thruster names are also probably wildly inaccurate
 thruster_config = [
     {
         'name': 'forward_left', #top
         # 'location': [0.13354, -0.28541, -0.043956],
-        'location': [0.008588, 0.012029, 0.201448],
+        'location': [0.008573, -0.118413, 0.153494],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 19,
         'model': 't-#',
@@ -61,7 +63,7 @@ thruster_config = [
     },
     {
         'name': 'forward_right', #bottom
-        'location': [0.079666, 0.011938, -0.105854],
+        'location': [0.077483, -0.118504, -0.153494],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 12,
         'model': 't-#',
@@ -71,7 +73,7 @@ thruster_config = [
     },
     {
         'name': 'forward_top', #right up
-        'location': [0.154729, 0.011938, 0.129965],
+        'location': [0.153494, -0.118504, 0.077573],
         'orientation': [0.0, -1.0, 0.0],
         'pin': 16,
         'model': 't-#',
@@ -82,7 +84,7 @@ thruster_config = [
     {
         'name': 'sideways_top', #left up
         # 'location': [-0.001,-0.222,0.14],
-        'location': [-0.152573,0.014938, 0.869965],
+        'location': [-0.153494, -0.118292, 0.0775735],
         'orientation': [1.0, 0.0, 0.0],
         'pin': 10,
         'model': 't-#',
@@ -92,7 +94,7 @@ thruster_config = [
     },
     {
         'name': 'up_left', #rigth mid
-        'location': [0.154729, 0.109131, 0.047902],
+        'location': [0.153494, -0.021175, 0.000105],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 25,
         'model': 't-#',
@@ -102,7 +104,7 @@ thruster_config = [
     },
     {
         'name': 'up_right', #left mid
-        'location': [-0.152573,0.109131,0.047902],
+        'location': [-0.153494, -0.021175, -0.000139],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 26,
         'model': 't-#',
