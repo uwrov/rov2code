@@ -96,12 +96,14 @@ margin_bottom = 22.0
 text = "Input info goes here"
 
 [node name="DirectMotorsButton" type="CheckButton" parent="."]
+visible = false
 margin_left = 193.0
 margin_top = 13.0
 margin_right = 269.0
 margin_bottom = 53.0
 
 [node name="Label2" type="Label" parent="."]
+visible = false
 margin_left = 8.0
 margin_top = 24.0
 margin_right = 197.0
@@ -109,6 +111,7 @@ margin_bottom = 38.0
 text = "Direct motors instead of axes"
 
 [node name="ServoPWMSlider" type="HSlider" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 48.0
@@ -120,6 +123,7 @@ max_value = 2000.0
 value = 1500.0
 
 [node name="ServoLowerPWMLabel" type="Label" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 8.0
@@ -129,6 +133,7 @@ margin_bottom = -24.2
 text = "1000"
 
 [node name="ServoUpperPWMLabel" type="Label" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 784.0
@@ -139,6 +144,7 @@ focus_mode = 2
 text = "2000"
 
 [node name="ServoCurrentPWMLabel" type="Label" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 400.0
@@ -299,12 +305,12 @@ text = "0.000"
 align = 2
 
 [node name="ThrusterInfoContainer" type="PanelContainer" parent="."]
+anchor_left = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-margin_left = 807.0
-margin_top = -159.0
-margin_right = 988.0
-margin_bottom = -21.0
+margin_left = -181.0
+margin_top = -138.0
 __meta__ = {
 "_edit_group_": true
 }
@@ -422,12 +428,13 @@ text = "0.000"
 align = 2
 
 [node name="MotorInfoContainer" type="PanelContainer" parent="."]
+anchor_left = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-margin_left = 614.0
-margin_top = -122.0
-margin_right = 795.0
-margin_bottom = -22.0
+margin_left = -181.0
+margin_top = -246.0
+margin_bottom = -146.0
 __meta__ = {
 "_edit_group_": true
 }
