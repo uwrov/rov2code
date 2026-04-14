@@ -39,13 +39,12 @@ rov_mass=8.17
 
 # name: human-readable name
 # location: position in ROV's coordinate system, units meters
-# orientation: unit vector representing forward direction of thruster
+# orientation: unit vector representing forward (round, not pointy) direction of thruster
 # pin: raspberry pi pin on which thruster is connected
-# model: 't-100' or 't-200' depending on which Blue Robotics thruster it is
+# model: 't-100' or 't-200' depending on which Blue Robotics thruster it is (different thrust characteristics)
 # handing: CW thruster prop (default) is 1, CCW is -1
     # purple = -1, blue = 1 (tape)
 # direction: corrects for ESC wiring if thruster runs in the wrong direction.
-
 # thruster locations just given in terms of CAD labelling (might need to reswitch later assuming they are the same)
 # thruster names are also probably wildly inaccurate
 thruster_config = [
@@ -53,60 +52,94 @@ thruster_config = [
         'name': 'top',
         'location': [0.008573, -0.118413, 0.153494],
         'orientation': [1.0, 0.0, 0.0],
-        'pin': 19,
+        'pin': 13,
         'model': 't-200',
         'direction': 1,
-        'handing' : 1,
+        'handing' : -1,
         'letter': 'A',
     },
     {
         'name': 'bottom',
         'location': [0.077483, -0.118504, -0.153494],
         'orientation': [1.0, 0.0, 0.0],
-        'pin': 12,
+        'pin': 11,
         'model': 't-200',
         'direction': 1,
-        'handing' : -1,
+        'handing' : 1,
         'letter': 'D',
     },
     {
         'name': 'left_up',
-        'location': [0.153494, -0.118504, 0.077573],
+        'location': [-0.153494, -0.118504, 0.077573],
         'orientation': [0.0, 0.0, 1.0],
-        'pin': 16,
+        'pin': 20,
         'model': 't-200',
         'direction': 1,
-        'handing' : -1,
+        'handing' : 1,
         'letter': 'E',
     },
     {
         'name': 'right_up',
-        'location': [-0.153494, -0.118292, 0.0775735],
+        'location': [0.153494, -0.118292, 0.0775735],
         'orientation': [0.0, 0.0, 1.0],
-        'pin': 10,
+        'pin': 19,
         'model': 't-200',
         'direction': 1,
-        'handing' : 1,
+        'handing' : -1,
         'letter': 'F',
     },
     {
         'name': 'left_back',
-        'location': [0.153494, -0.021175, 0.000105],
-        'orientation': [0.0, 1.0, 0.0],
-        'pin': 25,
+        'location': [-0.153494, -0.021175, 0.000105],
+        'orientation': [0.0, -1.0, 0.0],
+        'pin': 6,
         'model': 't-200',
         'direction': 1,
-        'handing' : -1,
+        'handing' : 1,
         'letter': 'C',
     },
     {
         'name': 'right_back',
-        'location': [-0.153494, -0.021175, -0.000139],
-        'orientation': [0.0, 1.0, 0.0],
-        'pin': 26,
+        'location': [0.153494, -0.021175, -0.000139],
+        'orientation': [0.0, -1.0, 0.0],
+        'pin': 16,
         'model': 't-200',
         'direction': 1 ,
-        'handing' : 1,
+        'handing' : -1,
         'letter': 'B',
     },
+]
+motor_config = [
+    {
+        'name': 'buoyancy_arm',
+        # 'location': [0.0, 0.0, 0.0],
+        # 'orientation': [0.0, 1.0, 0.0],
+        'pin': 25,
+        'model': 'm_200',
+        'direction': 1,
+    },
+    {
+        'name': 'gantry_right',
+        # 'location': [0.0, 0.0, 0.0],
+        # 'orientation': [0.0, 1.0, 0.0],
+        'pin': 26,
+        'model': 'm_200',
+        'direction': 1,
+    },
+    {
+        'name': 'gantry_left',
+        # 'location': [0.0, 0.0, 0.0],
+        # 'orientation': [0.0, 1.0, 0.0],
+        'pin': 9,
+        'model': 'm_200',
+        'direction': 1,
+    },
+    {
+        'name': 'manipulator',
+        # 'location': [0.0, 0.0, 0.0],
+        # 'orientation': [0.0, 1.0, 0.0],
+        'pin': 12,
+        'model': 'm_200',
+        'direction': 1,
+    }
 ]

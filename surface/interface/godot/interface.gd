@@ -10,22 +10,17 @@ var rov_orientation: Basis
 var target_orientation: Basis
 #var last_time = 0.0
 #var time = 0.0
-var power_scale := 1.8 setget set_power_scale
-var power_adjust_hold_time := 0.0
-var power_repeat_delay := 0.2  # Seconds between repeated steps
-var manipulator_repeat_delay := 0.5
-var manipulator_index = 1
+var power_scale := 0.5 setget set_power_scale
+var hold_time := 0.0
+var hold_repeat_delay := 0.1  # Seconds between repeated steps
+var mode_index = 1
 
 var mode_names = {
-	1: "Dual Axis Manipulator Mode",
-	2: "Single Toggle Manipulator Mode Top",
-	3: "Single Toggle Manipulator Mode Bottom",
-	4: "Thermistor Manipulator Mode",
-	5: "Syringe Manipulator Mode",
-	6: "Gantry Mode",
-	7: "Arm Mode",
+	1: "CW/CCW hold",
+	2: "CW/CCW toggle",
+	3: "Toolchanging",
 }
-var totalManipulators = mode_names.size()
+var totalModes = mode_names.size()
 
 var light_on = false
 
@@ -62,9 +57,10 @@ func basis_xform(operator: Basis, input: Basis):
 
 var derivative = Vector3.ZERO
 var imu_last_time = -1.0
-
+var thrusters = []
+var motors = []
 func set_power_scale(value: float) -> void:
-	power_scale = clamp(value, 0.05, 3.5)
+	power_scale = clamp(value, 0.05, 1)
 	$PowerBoost.text = "Power scale: %.3f" % power_scale
 
 func _on_data():
@@ -75,6 +71,8 @@ func _on_data():
 #	$Label.text = str(parsed)
 # warning-ignore:unused_variable
 	var acc  = parsed["accelerometer"]
+	thrusters = parsed["thrusters"]
+	motors = parsed["motors"]
 	var gyro = parsed["quaternion"]
 #	$Label.text = str(acc)
 	# IMU: x left, y forward, z up
@@ -172,58 +170,57 @@ var rotation_boost_i = Vector3.ZERO
 var error_integral = Vector3.ZERO
 
 var spinPWM = 1500
+var toggle_manipulator = false
 func _process(delta):
 	
 #	time += delta
 	_client.poll()
 	
-	var holding_increase := Input.is_action_pressed("power_increase")
-	var holding_decrease := Input.is_action_pressed("power_decrease")
-	var next_manipulator := Input.is_action_pressed("manipulator_next")
-	var prev_manipulator := Input.is_action_pressed("manipulator_previous")
+	var holding_increase := Input.is_action_pressed("dpad_up")
+	var holding_decrease := Input.is_action_pressed("dpad_down")
+	var next_mode := Input.is_action_pressed("dpad_right")
+	var prev_mode := Input.is_action_pressed("dpad_left")
 
 	if holding_increase or holding_decrease:
-		power_adjust_hold_time -= delta
-		if power_adjust_hold_time <= 0.0:
+		hold_time -= delta
+		if hold_time <= 0.0:
 			if holding_increase:
 				set_power_scale(power_scale * 1.1)
 			elif holding_decrease:
 				set_power_scale(power_scale / 1.1)
-			power_adjust_hold_time = power_repeat_delay
-	elif next_manipulator or prev_manipulator:
-		power_adjust_hold_time -= delta
-		if power_adjust_hold_time <= 0.0:
-			manipulator_index += 1 if next_manipulator else -1
+			hold_time = hold_repeat_delay
+	elif next_mode or prev_mode:
+		hold_time -= delta
+		if hold_time <= 0.0:
+			mode_index += 1 if next_mode else -1
 				
-			if manipulator_index > totalManipulators:
-				manipulator_index = 1
-			elif manipulator_index < 1:
-				manipulator_index = totalManipulators
+			if mode_index > totalModes:
+				mode_index = 1
+			elif mode_index < 1:
+				mode_index = totalModes
 				
-			power_adjust_hold_time = manipulator_repeat_delay
+			hold_time = hold_repeat_delay
 			
 		$LabelDebug.text = "Manipulator Mode: %s (Index: %d)" % [
-			mode_names.get(manipulator_index, "Unknown"), 
-			manipulator_index
+			mode_names.get(mode_index, "Unknown"), 
+			mode_index
 		]
 	else:
-		power_adjust_hold_time = 0  # Reset when not held
+		hold_time = 0  # Reset when not held
 
 	
-#	var translation: Vector3 = Vector3.FORWARD
-	
 	var translation := Vector3(
-		Input.get_axis("move_right", "move_left"),
-		Input.get_axis("move_forward", "move_back"),
-		Input.get_axis("move_down", "move_up")
+		Input.get_axis("right_bumper", "left_bumper"), #strafe
+		Input.get_axis("left_stick_up", "left_stick_down"), #fwd/bckwd
+		Input.get_axis("left_trigger", "right_trigger") #heave
 	)
 	
 	var rotation := Vector3(
-		Input.get_axis("pitch_up", "pitch_down"),
-		Input.get_axis("roll_right", "roll_left"),
-		Input.get_axis("yaw_right", "yaw_left")
+		Input.get_axis("button_a", "button_y"), #pitch
+		#Input.get_axis("right_stick_right", "right_stick_left"), #roll
+		0.0, # we no longer want to roll like ever
+		Input.get_axis("left_stick_right", "left_stick_left") #yaw
 	)
-	
 	$LabelSASState.text = "SAS state: inactive"
 	
 	var rotation_boost = Vector3.ZERO
@@ -236,15 +233,7 @@ func _process(delta):
 	
 	if Input.is_action_pressed("hold_orientation"):
 		$LabelSASState.text = "SAS state: holding - "
-#		var y_ctrl = -rov_orientation.get_euler().y
-#		y_ctrl *= 0.4
-#		y_ctrl = clamp(y_ctrl, -0.2, 0.2)
-#		rotation_boost += Vector3(0.0, 0.0, y_ctrl)
-#		$LabelSASState.text += str(y_ctrl)
-#		pass
-		print("foo")
-		
-		
+#
 		rotation_boost = Vector3.ZERO
 
 		var x_displacement = rov_orientation.x.cross(target_orientation.x)
@@ -289,115 +278,60 @@ func _process(delta):
 		
 		var ctrl = proportional + integral + d
 		
-		ctrl.x *= 0.9
-		ctrl.y *= 1.5
-		ctrl.z *= 0.9
 	
+	var manipulator_pwm = 1500
+	var x = Input.get_axis("right_stick_left", "right_stick_right")
+	var y = Input.get_axis("right_stick_down", "right_stick_up")
 
-#		rotation_boost += error * 1.0
-#		rotation_boost = Vector3(error.x, -error.z, error.y) * .2
-#		rotation_boost = Vector3(-error.x, error.z, error.y) * .1
-		rotation_boost = Vector3(-ctrl.x, ctrl.z, ctrl.y)
-		rotation_boost.x = clamp(rotation_boost.x, -0.3, 0.3)
-		rotation_boost.y = clamp(rotation_boost.y, -0.3, 0.3)
-		rotation_boost.z = clamp(rotation_boost.z, -0.3, 0.3)
-		
-		$LabelSASState.text += "\nPitch boost: " + str(rotation_boost.x)
-		$LabelSASState.text += "\nRoll boost: " + str(rotation_boost.y)
-		$LabelSASState.text += "\nYaw boost: " + str(rotation_boost.z)
-		$LabelSASState.text += "\nErr int: " + str(error_integral)
-		$LabelSASState.text += "\nDerivative: " + str(derivative)
+	var v = Vector2(x, y)
+	var r = v.length()
 
-		$Label3.text = "%.5f %.5f %.5f" % [rotation_boost.x, rotation_boost.y, rotation_boost.z]
+	var motor_a = 0.0
+	var motor_b = 0.0
 
-#		rotation += rotation_boost
+	if r >= 0.02:
+		var mag = clamp((r - 0.02) / (1.0 - 0.02), 0.0, 1.0)
+		var cmd = v / r * pow(mag, 2.2)
+
+		motor_a = cmd.y + cmd.x
+		motor_b = cmd.y - cmd.x
+
+		var m = max(abs(motor_a), abs(motor_b))
+		if m > 1.0:
+			motor_a /= m
+			motor_b /= m
+
+	var left_gantry = int(round(1500 + motor_a * 200.0))
+	var right_gantry  = int(round(1500 + motor_b * 200.0))
 	
-	var bottom_manipulator_pwm = 1500
-	var top_manipulator_pwm = 1500
-	var gantry_x = 0.0
-	var gantry_y = 0.0
-	var buoyancy_arm = 0.0
-
-	var OPEN_PWM = 75
-	var PWM_COEFFICIENT = 1
-	if manipulator_index == 1:
-		if Input.is_action_pressed("manipulator_close"):
-			bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
-		if Input.is_action_pressed("manipulator_open"):
-			bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
-		
-		if Input.is_action_pressed("manipulator_left"):
-			bottom_manipulator_pwm -= 100 * PWM_COEFFICIENT #90 is ok
-			top_manipulator_pwm -= 115 * PWM_COEFFICIENT
-		if Input.is_action_pressed("manipulator_right"):
-			bottom_manipulator_pwm += 115 * PWM_COEFFICIENT #95 is ok
-			top_manipulator_pwm += 100 * PWM_COEFFICIENT
-		#bottom_manipulator_pwm += (bottom_manipulator_pwm - 1500) * 0.5
-		#top_manipulator_pwm += (top_manipulator_pwm - 1500) * 0.5
-	elif manipulator_index == 2 or manipulator_index == 3:
-		if Input.is_action_pressed("manipulator_close"):
-			spinPWM = 1500
-		if Input.is_action_pressed("manipulator_open"):
-			spinPWM = 1600
-		if Input.is_action_pressed("manipulator_left"):
-			spinPWM = 1400
-
-		if manipulator_index == 2:
-			top_manipulator_pwm = spinPWM
-		else:
-			bottom_manipulator_pwm = spinPWM
-	elif manipulator_index == 4:
-		if Input.is_action_pressed("manipulator_close"):
-			bottom_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
-		if Input.is_action_pressed("manipulator_open"):
-			bottom_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
-		if Input.is_action_pressed("manipulator_left"):
-			top_manipulator_pwm -= 100 * PWM_COEFFICIENT
-		if Input.is_action_pressed("manipulator_right"):
-			top_manipulator_pwm += 100 * PWM_COEFFICIENT
-	elif manipulator_index == 5:
-		if Input.is_action_pressed("manipulator_close"):
-			top_manipulator_pwm += OPEN_PWM * PWM_COEFFICIENT * 1.7
-		if Input.is_action_pressed("manipulator_open"):
-			top_manipulator_pwm -= OPEN_PWM * PWM_COEFFICIENT * 1.7
-	elif manipulator_index == 6:
-		if Input.is_action_pressed("manipulator_left"):
-			gantry_x = 1.0
-		elif Input.is_action_pressed("manipulator_open"):
-			gantry_x = -1.0
-		
-		if Input.is_action_pressed("manipulator_right"):
-			gantry_y = 1.0
-		elif Input.is_action_pressed("manipulator_close"):
-			gantry_y = -1.0
-	elif manipulator_index == 7:
-		if Input.is_action_pressed("manipulator_left"):
-			buoyancy_arm = 1.0
-		elif Input.is_action_pressed("manipulator_open"):
-			buoyancy_arm = -1.0
+	if mode_index == 1:
+		if Input.is_action_pressed("button_b"):
+			manipulator_pwm -= 200
+		if Input.is_action_pressed("button_x"):
+			manipulator_pwm += 200
+	elif mode_index == 2:
+		if Input.is_action_pressed("button_b"):
+			toggle_manipulator *= -1
+			if toggle_manipulator:
+				manipulator_pwm = 1700
+		if Input.is_action_pressed("button_x"):
+			toggle_manipulator *= -1
+			if toggle_manipulator:
+				manipulator_pwm = 1300
+	elif mode_index == 3:
+		if Input.is_action_pressed("button_b"):
+			print("foo")
+		if Input.is_action_pressed("button_x"):
+			print("bar")
 
 	if Input.is_action_pressed("light_on"):
 		light_on = true
 	else:
 		light_on = false
-	
-	
-#	rotation.y *= 0.3
 	rotation.x *= pow(abs(rotation.x), 1.0)
 	rotation.y *= pow(abs(rotation.y), 1.0)
 	rotation.z *= pow(abs(rotation.z), 1.0)
-	
-	rotation *= 0.7
-	rotation.y *= 0.4
-	
-	rotation += rotation_boost
-	
-#	rotation.z *= 1.2
 	translation.y *= abs(pow(translation.y, 1.0))
-	#translation.x *= 0
-	
-#	translation *= 0.4
-
 	translation.x *= -1.0
 	
 	$InputLabel.text = "%s : %s" % [str(translation), str(rotation)]
@@ -409,25 +343,31 @@ func _process(delta):
 	$"%RotationXValue".text = str("%0.3f" % rotation.x)
 	$"%RotationYValue".text = str("%0.3f" % rotation.y)
 	$"%RotationZValue".text = str("%0.3f" % rotation.z)
+	$"%TopValue".text = str("%0.1f" %thrusters.top)
+	$"%BottomValue".text = str("%0.1f" %thrusters.bottom)
+	$"%RightUpValue".text = str("%0.1f" %thrusters.right_up)
+	$"%LeftUpValue".text = str("%0.1f" %thrusters.left_up)
+	$"%RightFwdValue".text = str("%0.1f" %thrusters.right_back)
+	$"%LeftFwdValue".text = str("%0.1f" %thrusters.left_back)
 	
-	$ServoCurrentPWMLabel.text = str(bottom_manipulator_pwm)
+	$"%GantryLeftValue".text = str("%0.1f" %motors.gantry_left)
+	$"%GantryRightValue".text = str("%0.1f" %motors.gantry_right)
+	$"%ManipulatorValue".text = str("%0.1f" %motors.manipulator)
+	$"%ArmValue".text = str("%0.1f" %motors.buoyancy_arm)
 	
-	translation *= Vector3(1.0, 2.5, 2.5)
-#	translation *= Vector3(1.0, 5.0, 3.0)
+	
+	$ServoCurrentPWMLabel.text = str("%0.1f" %manipulator_pwm)
+	
 	$InputLabel.text = str(translation)
 	
 	if ready:
 		var data = {
 			"type": "control_input",
-			"translate": Input.get_axis("move_left", "move_right"),
-			"translation": [translation.x, translation.y * 5.0, translation.z * 3.0],
+			"translation": [translation.x*100, translation.y*100, translation.z*100],
 			"rotation": [rotation.x, rotation.y, rotation.z],
-			"direct_motors": $DirectMotorsButton.pressed,
-			"bottom_manip_pwm": int(bottom_manipulator_pwm),
-			"top_manip_pwm": int(top_manipulator_pwm),
 			"power_scale" : power_scale,
-			"gantry_x": gantry_x,
-			"gantry_y": gantry_y,
-			"buoyancy_arm": buoyancy_arm,
+			"manipulator_pwm": int(manipulator_pwm),
+			"left_gantry": left_gantry,
+			"right_gantry": right_gantry,
 			"light_on": light_on}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

@@ -82,12 +82,19 @@ def convert_motor_powers_to_pwms(motor_powers):
     pwms = []
     for thrust, cfg in zip(np.atleast_1d(motor_powers), thruster_config):
         thrust_arr, pwm_arr = _thruster_data[cfg['model']]
-        if abs(thrust) < 0.2:
+        min_thrust = 0.1
+        if _thruster_data[cfg['model']] == "t-200":
+            min_thrust = 0.3
+        if cfg.get('direction', 1) * cfg.get('handing', 1) < 0:
+            pwm_lookup = 3000 - pwm_arr
+        else:
+            pwm_lookup = pwm_arr
+        if abs(thrust) < min_thrust:
             pwms.append(1500)
             continue
         # else do normal clipping + interp
         t_clipped = np.clip(thrust, thrust_arr.min(), thrust_arr.max())
-        pwms.append(int(np.interp(t_clipped, thrust_arr, pwm_arr)))
+        pwms.append(int(np.interp(t_clipped, thrust_arr, pwm_lookup)))
     return pwms
 
 

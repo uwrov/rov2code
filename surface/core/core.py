@@ -14,11 +14,7 @@ import time
 import math
 
 logger = ROVLogger()
-
-BOTTOM_MANIP_PIN = 9
-TOP_MANIP_PIN = 11
-
-TIME_TO_RAMP = 1.5
+TIME_TO_RAMP = 0.5
 TIME_PER_CYCLE = 0.1
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
@@ -32,15 +28,12 @@ class Core():
         self.translation = [0.0, 0.0, 0.0]
         self.rotation = [0.0, 0.0, 0.0]
         self.power_scale = 0.5
-        self.direct_motors = False
-        self.bottom_manip_pwm = 1500
-        self.top_manip_pwm = 1500
-        
-        self.gantry_x = 0.0
-        self.gantry_y = 0.0
-        self.buoyancy_arm = 0.0
+        self.manipulator_pwm = 1500
+        self.right_gantry = 1500
+        self.left_gantry = 1500
+        self.buoyancy_arm = 1500
 
-        self.angular_acceleration, self.accelerometer, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector = None, None, None, None, None, None
+        self.angular_acceleration, self.accelerometer, self.thrusters, self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector = None,None, None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
         self.last_rotational_velocity = None
         self.last_depth = None
@@ -62,42 +55,64 @@ class Core():
 
     async def update_controls(self):
         trans = self.translation
-        trans[0] *=3 #Strafe should be faster
+        # trans[0] *=3 #Strafe should be faster
         rot = self.rotation
-        rot[1] *=2 #roll should be faster
+        # rot[1] *=2 #roll should be faster
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
 
-
-        if not self.direct_motors:
-            powers = convert_force_and_torque_to_motor_powers(powers)
-        else:
-            powers = np.transpose(np.array([powers], dtype=np.float32))
-
-        for i in range(len(powers)):
-            powers[i] = THRUSTER_CFG[i]['direction']*THRUSTER_CFG[i]['handing']* powers[i] * self.power_scale
-
-        pwms = convert_motor_powers_to_pwms(powers)
+        powers = convert_force_and_torque_to_motor_powers(powers)
         
-        delta_pwms = np.subtract(pwms, self.prev_pwms)
+        for i in range(len(powers)):
+            powers[i] = powers[i] * self.power_scale
+        pwms = convert_motor_powers_to_pwms(powers)
+        pwms = np.array(pwms, dtype=float)
+        prev = np.array(self.prev_pwms, dtype=float)
+        delta_pwms = np.subtract(pwms,prev)
         delta_pwms = np.clip(delta_pwms, -RAMP_LIMIT, +RAMP_LIMIT)
+        pwms = np.add(prev, delta_pwms)
+        self.prev_pwms = pwms.tolist()
 
         pin_pwms = [{
             'number': THRUSTER_CFG[i]['pin'],
             'value': pwms[i]
         } for i in range(len(pwms))]
 
-        GANTRY_PINS = [0, 1]
-        GANTRY_PWM_SCALING_FACTOR = 100
+        # GANTRY_PINS = [0, 1]
+        # GANTRY_PWM_SCALING_FACTOR = 100
 
-        top_right_pwm = int((self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR)
-        top_left_pwm = int((-self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR) 
+        # top_right_pwm = int((self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR)
+        # top_left_pwm = int((-self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR) 
 
-        pin_pwms.append({'number': GANTRY_PINS[0], 'value': top_right_pwm})
-        pin_pwms.append({'number': GANTRY_PINS[1], 'value': top_left_pwm})
+        # pin_pwms.append({'number': GANTRY_PINS[0], 'value': top_right_pwm})
+        # pin_pwms.append({'number': GANTRY_PINS[1], 'value': top_left_pwm})
 
-        BUOYANCY_ARM_PIN = 2
-        BUOYANCY_ARM_PWM_SCALING_FACTOR = 100
-        pin_pwms.append({'number': BUOYANCY_ARM_PIN, 'value': int(self.buoyancy_arm * BUOYANCY_ARM_PWM_SCALING_FACTOR)})
+        # pin_pwms = [26, 19, 13, 6, 11, 9, 20, 16, 12, 25]
+        # gantry: 26 (right_gantry), 9 (left_gantry)
+        # manipulator: 12
+        # buoyancy arm: 25
+        # maybe problematic: 11 (bottom), 20 (left_up (not escs))
+        BUOYANCY_ARM_PIN = 25
+        GANTRY_RIGHT_PIN = 26
+        GANTRY_LEFT_PIN = 9
+        MANIPULATOR_PIN = 12
+        pin_pwms += [
+            {
+                'number': BUOYANCY_ARM_PIN, 
+                'value': 1500 + int(rot[0] * 200)
+            },
+            {
+                'number': GANTRY_RIGHT_PIN,
+                'value': int(self.right_gantry)
+            },
+            {
+                'number': GANTRY_LEFT_PIN,
+                'value': int(self.left_gantry)
+            },
+            {
+                'number': MANIPULATOR_PIN,
+                'value': self.manipulator_pwm
+            }
+        ]
 
         return pin_pwms
 

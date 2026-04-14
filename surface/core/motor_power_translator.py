@@ -21,10 +21,10 @@ for i in range(6):
     displacement = np.subtract(thruster_config[i]['location'], rov_center_of_mass)
     force = thruster_config[i]['orientation']
     control_mat[3:6, i] = np.cross(displacement, force)
-
-control_inv = np.linalg.inv(control_mat)
+LAMBDA=1.5
+allocator = np.linalg.inv(control_mat.T @ control_mat + LAMBDA * np.eye(6)) @ control_mat.T
 
 def convert_force_and_torque_to_motor_powers(vector) -> np.array:
-    input_vector = np.array([vector]).T
-    motor_powers = control_inv @ input_vector
-    return motor_powers
+    input_vector = np.array([vector]).reshape(6,1)
+    motor_powers = allocator @ input_vector
+    return motor_powers.reshape(-1)

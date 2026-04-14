@@ -19,7 +19,7 @@ class Interface():
         self.task = task
 
     def notify_new_sensor_data(self):
-        print(f'accelerometer: {self.core.accelerometer}, gyro: {self.core.gyroscope}')
+        print(f'accelerometer: {self.core.accelerometer}, gyro: {self.core.gyroscope}, thrusters: {self.core.thrusters}, motors: {self.core.motors}')
 
     async def server_handler(self, _websocket):
         self.websocket = _websocket
@@ -32,5 +32,7 @@ class Interface():
         if self.websocket != None:
             await self.websocket.send(json.dumps({
                 'accelerometer': self.core.accelerometer,
-                'quaternion': self.core.quaternion
+                'quaternion': self.core.quaternion,
+                'thrusters': self.core.thrusters,
+                'motors': self.core.motors,
             }))

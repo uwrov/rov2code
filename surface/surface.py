@@ -32,8 +32,10 @@ def main():
 			"type": "control_input",
 			"translation": [0, 0, 0],
 			"rotation": [0, 0, 0],
-			"bottom_manip_pwm": 1500,
-			"top_manip_pwm": 1500,
+			"manipulator_pwm": 1500,
+			"gantry_x": 1500,
+            "gantry_y": 1500,
+            "buoyancy_arm": 1500,
 		}
         asyncio.run(core.consume_interface_websocket(data))
         asyncio.run(core.update_controls())
