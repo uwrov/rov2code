@@ -59,6 +59,9 @@ var derivative = Vector3.ZERO
 var imu_last_time = -1.0
 var thrusters = []
 var motors = []
+var gantry = {"x" : 0.0, "y" : 0.0}
+var arm_angle = 0.0
+
 func set_power_scale(value: float) -> void:
 	power_scale = clamp(value, 0.05, 1)
 	$PowerBoost.text = "Power scale: %.3f" % power_scale
@@ -73,6 +76,8 @@ func _on_data():
 	var acc  = parsed["accelerometer"]
 	thrusters = parsed["thrusters"]
 	motors = parsed["motors"]
+	gantry = parsed["gantry"]
+	arm_angle = parsed["arm_angle"]
 	var gyro = parsed["quaternion"]
 #	$Label.text = str(acc)
 	# IMU: x left, y forward, z up
@@ -354,7 +359,10 @@ func _process(delta):
 	$"%GantryRightValue".text = str("%0.1f" %motors.gantry_right)
 	$"%ManipulatorValue".text = str("%0.1f" %motors.manipulator)
 	$"%ArmValue".text = str("%0.1f" %motors.buoyancy_arm)
-	
+	$"%ConduitSimplified".gantry_x = gantry["x"]
+	$"%ConduitSimplified".gantry_y = gantry["y"]
+	$"%ConduitSimplified".arm_angle = arm_angle
+	$"%ArmValue".text = str("%0.1f" %arm_angle)
 	
 	$ServoCurrentPWMLabel.text = str("%0.1f" %manipulator_pwm)
 	

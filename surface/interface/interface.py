@@ -35,4 +35,6 @@ class Interface():
                 'quaternion': self.core.quaternion,
                 'thrusters': self.core.thrusters,
                 'motors': self.core.motors,
+                'gantry' : self.core.gantry,
+                'arm_angle' : self.core.arm_angle
             }))

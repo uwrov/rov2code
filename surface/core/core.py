@@ -33,7 +33,7 @@ class Core():
         self.left_gantry = 1500
         self.buoyancy_arm = 1500
 
-        self.angular_acceleration, self.accelerometer, self.thrusters, self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector = None,None, None, None, None, None, None, None
+        self.angular_acceleration, self.accelerometer, self.thrusters, self.gantry,self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector, self.arm_angle =None, None,None,None, None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
         self.last_rotational_velocity = None
         self.last_depth = None

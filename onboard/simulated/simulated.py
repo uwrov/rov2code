@@ -10,11 +10,12 @@ from rov_config import thruster_config
 from rov_config import motor_config
 
 PIN_HACK = 1500
-
 class ROV:
     def __init__(self):
         print('initializing simulated ROV')
         self.pwms = {}
+        self.gantry = {"x": 0.0, "y": 0.0}
+        self.arm_angle = 0.0
         # TODO start Godot simulation and ensure cameras are connected
 
 
@@ -59,6 +60,13 @@ class ROV:
             motor_value *= m.get("direction", 1)
 
             motors[name] = motor_value
+        #TODO time-based translation instead of super small scalar to avoid framerate dependency
+        self.gantry["x"] += (motors["gantry_left"] - motors["gantry_right"])/2 * 0.0003
+        self.gantry["y"] += (motors["gantry_left"] + motors["gantry_right"])/2 * 0.0001
+        self.gantry["x"] = max(-0.77, min(self.gantry["x"], 0.77))
+        self.gantry["y"] = max(-0.17, min(self.gantry["y"], 0.17))
+        self.arm_angle = (self.arm_angle + motors["buoyancy_arm"] * 0.04 )% 360
+        
         # TODO implement retrieving from simulation
         # kinda being done
         return {
@@ -66,4 +74,6 @@ class ROV:
             "accelerometer": accelerometer,
             "thrusters": thrusters,
             "motors": motors,
+            "gantry" : self.gantry,
+            "arm_angle" : self.arm_angle
         }

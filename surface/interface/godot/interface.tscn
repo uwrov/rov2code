@@ -39,7 +39,7 @@ margin_top = -176.0
 margin_right = 312.0
 margin_bottom = -162.0
 rect_scale = Vector2( 2, 2 )
-text = "Manipulator Mode: Dual Axis Manipulator Mode"
+text = "CW/CCW hold"
 
 [node name="LabelDebug2" type="Label" parent="."]
 anchor_top = 1.0
@@ -538,7 +538,10 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8 )
 unique_name_in_owner = true
 
 [node name="ConduitSimplified" parent="Base/ROVProxy" instance=ExtResource( 2 )]
+unique_name_in_owner = true
 transform = Transform( 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0 )
+gantry_x = 0.203
+gantry_y = 0.168
 
 [node name="Axes" type="Spatial" parent="Base"]
 
