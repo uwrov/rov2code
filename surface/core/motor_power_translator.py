@@ -21,7 +21,7 @@ for i in range(6):
     displacement = np.subtract(thruster_config[i]['location'], rov_center_of_mass)
     force = thruster_config[i]['orientation']
     control_mat[3:6, i] = np.cross(displacement, force)
-LAMBDA=0.2
+LAMBDA=0.2 # disincentivises big motor thrusts for roughly the same result (overconstrained roll)
 allocator = np.linalg.inv(control_mat.T @ control_mat + LAMBDA * np.eye(6)) @ control_mat.T
 
 def convert_force_and_torque_to_motor_powers(vector) -> np.array:
