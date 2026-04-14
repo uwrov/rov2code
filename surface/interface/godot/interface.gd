@@ -363,8 +363,8 @@ func _process(delta):
 	if ready:
 		var data = {
 			"type": "control_input",
-			"translation": [translation.x*100, translation.y*100, translation.z*100],
-			"rotation": [rotation.x, rotation.y, rotation.z],
+			"translation": [translation.x * 60, translation.y * 80, translation.z * 60],
+			"rotation": [rotation.x, rotation.y, rotation.z * 50],
 			"power_scale" : power_scale,
 			"manipulator_pwm": int(manipulator_pwm),
 			"left_gantry": left_gantry,
