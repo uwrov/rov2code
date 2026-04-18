@@ -3,7 +3,8 @@ import busio
 import board
 import time
 from gpiozero import Servo
-
+from rov_config import thruster_config
+from rov_config import motor_config
 class ROV:
     def __init__(self):
         self.servos = {}
