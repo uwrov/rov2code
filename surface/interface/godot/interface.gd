@@ -226,6 +226,18 @@ func _process(delta):
 		0.0, # we no longer want to roll like ever
 		Input.get_axis("left_stick_right", "left_stick_left") #yaw
 	)
+	var override = {
+		"motor_a" : 1700 if Input.is_action_pressed("motor_a") else 1500,
+		"motor_b" : 1700 if Input.is_action_pressed("motor_b") else 1500,
+		"motor_c" : 1700 if Input.is_action_pressed("motor_c") else 1500,
+		"motor_d" : 1700 if Input.is_action_pressed("motor_d") else 1500,
+		"motor_e" : 1700 if Input.is_action_pressed("motor_e") else 1500,
+		"motor_f" : 1700 if Input.is_action_pressed("motor_f") else 1500,
+		"motor_g" : 1700 if Input.is_action_pressed("motor_g") else 1500,
+		"motor_h" : 1700 if Input.is_action_pressed("motor_h") else 1500,
+		"motor_i" : 1700 if Input.is_action_pressed("motor_i") else 1500,
+		"motor_j" : 1700 if Input.is_action_pressed("motor_j") else 1500
+	}
 	$LabelSASState.text = "SAS state: inactive"
 	
 	var rotation_boost = Vector3.ZERO
@@ -291,23 +303,23 @@ func _process(delta):
 	var v = Vector2(x, y)
 	var r = v.length()
 
-	var motor_a = 0.0
-	var motor_b = 0.0
+	var motor_1 = 0.0
+	var motor_2 = 0.0
 
 	if r >= 0.02:
 		var mag = clamp((r - 0.02) / (1.0 - 0.02), 0.0, 1.0)
 		var cmd = v / r * pow(mag, 2.2)
 
-		motor_a = cmd.y + cmd.x
-		motor_b = cmd.y - cmd.x
+		motor_1 = cmd.y + cmd.x
+		motor_2 = cmd.y - cmd.x
 
-		var m = max(abs(motor_a), abs(motor_b))
+		var m = max(abs(motor_1), abs(motor_2))
 		if m > 1.0:
-			motor_a /= m
-			motor_b /= m
+			motor_1 /= m
+			motor_2 /= m
 
-	var left_gantry = int(round(1500 + motor_a * 200.0))
-	var right_gantry  = int(round(1500 + motor_b * 200.0))
+	var left_gantry = int(round(1500 + motor_1 * 200.0))
+	var right_gantry  = int(round(1500 + motor_2 * 200.0))
 	
 	if mode_index == 1:
 		if Input.is_action_pressed("button_b"):
@@ -377,5 +389,6 @@ func _process(delta):
 			"manipulator_pwm": int(manipulator_pwm),
 			"left_gantry": left_gantry,
 			"right_gantry": right_gantry,
-			"light_on": light_on}
+			"light_on": light_on,
+			"override" : override}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

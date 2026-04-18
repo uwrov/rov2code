@@ -27,6 +27,7 @@ class Core():
         self.translate_x = 0.0
         self.translation = [0.0, 0.0, 0.0]
         self.rotation = [0.0, 0.0, 0.0]
+        self.override = [1500,1500,1500,1500,1500,1500,1500,1500,1500,1500]
         self.power_scale = 0.5
         self.manipulator_pwm = 1500
         self.right_gantry = 1500
@@ -113,7 +114,50 @@ class Core():
                 'value': self.manipulator_pwm
             }
         ]
-
+        
+        pin_pwms = [
+            {
+                'number': THRUSTER_CFG[0]['pin'],
+                'value': self.override["motor_a"]
+            },
+            {
+                'number': THRUSTER_CFG[1]['pin'],
+                'value': self.override["motor_b"]
+            },
+            {
+                'number': THRUSTER_CFG[2]['pin'],
+                'value': self.override["motor_c"]
+            },
+            {
+                'number': THRUSTER_CFG[3]['pin'],
+                'value': self.override["motor_d"]
+            },
+            {
+                'number': THRUSTER_CFG[4]['pin'],
+                'value': self.override["motor_e"]
+            },
+            {
+                'number': THRUSTER_CFG[5]['pin'],
+                'value': self.override["motor_f"]
+            },
+            {
+                'number': BUOYANCY_ARM_PIN, 
+                'value': self.override["motor_g"]
+            },
+            {
+                'number': GANTRY_RIGHT_PIN,
+                'value': self.override["motor_h"]
+            },
+            {
+                'number': GANTRY_LEFT_PIN,
+                'value': self.override["motor_i"]
+            },
+            {
+                'number': MANIPULATOR_PIN,
+                'value': self.override["motor_j"]
+            }
+        ]
+        print(self.override)
         return pin_pwms
 
     async def consume_interface_websocket(self, packet):
