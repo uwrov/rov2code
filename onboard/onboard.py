@@ -6,6 +6,9 @@ import os
 import websockets
 from websockets.client import ClientConnection
 
+from rov_config import thruster_config
+from rov_config import motor_config
+
 def main():
     print('onboard client starting')
     rov, websocket_uri = setup_using_command_line_args()
