@@ -96,14 +96,13 @@ margin_bottom = 22.0
 text = "Input info goes here"
 
 [node name="DirectMotorsButton" type="CheckButton" parent="."]
-visible = false
+unique_name_in_owner = true
 margin_left = 193.0
 margin_top = 13.0
 margin_right = 269.0
 margin_bottom = 53.0
 
 [node name="Label2" type="Label" parent="."]
-visible = false
 margin_left = 8.0
 margin_top = 24.0
 margin_right = 197.0

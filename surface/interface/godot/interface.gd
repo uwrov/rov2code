@@ -390,5 +390,6 @@ func _process(delta):
 			"left_gantry": left_gantry,
 			"right_gantry": right_gantry,
 			"light_on": light_on,
+			"direct_motors" : $"%DirectMotorsButton".pressed,
 			"override" : override}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())
