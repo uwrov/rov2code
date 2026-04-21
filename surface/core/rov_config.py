@@ -51,7 +51,7 @@ rov_mass=8.17
 thruster_config = [
     {
         'name': 'top',
-        'location': [0.008573, -0.118413, 0.153494],
+        'location': [0.005252, -0.118399, 0.158790],
         'orientation': [1.0, 0.0, 0.0],
         'pin': 19,
         'model': 't-200',
@@ -61,7 +61,7 @@ thruster_config = [
     },
     {
         'name': 'bottom',
-        'location': [0.077483, -0.118504, -0.153494],
+        'location': [0.074161, -0.118399, -0.158790],
         'orientation': [1.0, 0.0, 0.0],
         'pin': 12,
         'model': 't-200',
@@ -71,7 +71,7 @@ thruster_config = [
     },
     {
         'name': 'left_up',
-        'location': [0.153494, -0.118504, 0.077573],
+        'location': [0.158790, -0.118399, 0.074252],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 16,
         'model': 't-200',
@@ -81,7 +81,7 @@ thruster_config = [
     },
     {
         'name': 'right_up',
-        'location': [-0.153494, -0.118292, 0.0775735],
+        'location': [-0.158790, -0.118399, 0.074252],
         'orientation': [0.0, 0.0, 1.0],
         'pin': 10,
         'model': 't-200',
@@ -91,7 +91,7 @@ thruster_config = [
     },
     {
         'name': 'left_back',
-        'location': [0.153494, -0.021175, 0.000105],
+        'location': [0.158790, -0.024497, 0.000],
         'orientation': [0.0, 1.0, 0.0],
         'pin': 25,
         'model': 't-200',
@@ -101,7 +101,7 @@ thruster_config = [
     },
     {
         'name': 'right_back',
-        'location': [-0.153494, -0.021175, -0.000139],
+        'location': [-0.158790, -0.024497, -0.000034],
         'orientation': [0.0, 1.0, 0.0],
         'pin': 26,
         'model': 't-200',

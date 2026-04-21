@@ -22,7 +22,10 @@ for i in range(6):
     force = thruster_config[i]['orientation']
     control_mat[3:6, i] = np.cross(displacement, force)
 
-control_inv = np.linalg.inv(control_mat)
+control_mat_5dof = np.delete(control_mat, 3, axis=0)
+
+control_inv = np.linalg.pinv(control_mat_5dof)
+control_inv = np.insert(control_inv, 3, 0, axis=1)
 
 def convert_force_and_torque_to_motor_powers(vector) -> np.array:
     input_vector = np.array([vector]).T
