@@ -4,6 +4,7 @@ import cv2
 from pupil_apriltags import Detector
 
 # 0 is usually the FaceTime HD camera
+# T100 motors
 camera = cv2.VideoCapture(0)
 
 if not camera.isOpened():
@@ -40,7 +41,10 @@ while True:
     for r in results:
         # Draw a box around the tag
         (ptA, ptB, ptC, ptD) = r.corners
-        cv2.line(frame, tuple(ptA.astype(int)), tuple(ptB.astype(int)), (0, 255, 0), 2)
+        if r.tag_id == 2:
+            cv2.line(frame, tuple(ptA.astype(int)), tuple(ptB.astype(int)), (255, 0, 0), 2)
+        else:
+            cv2.line(frame, tuple(ptA.astype(int)), tuple(ptB.astype(int)), (0, 255, 0), 2)
         cv2.putText(frame, f"ID: {r.tag_id}", (int(ptA[0]), int(ptA[1]) - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
