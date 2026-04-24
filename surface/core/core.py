@@ -2,6 +2,7 @@ import random
 import numpy as np
 import pickle
 from .rov_config import thruster_config as THRUSTER_CFG
+from .rov_config import motor_config as MOTOR_CFG
 from .accel_gyro_values import manipulate_gyro_accel
 
 from .motor_power_translator import convert_force_and_torque_to_motor_powers
@@ -34,6 +35,7 @@ class Core():
         self.right_gantry = 1500
         self.left_gantry = 1500
         self.buoyancy_arm = 1500
+        self.direct_motors = True
 
         self.angular_acceleration, self.accelerometer, self.thrusters, self.gantry,self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector, self.arm_angle =None, None,None,None, None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
@@ -61,9 +63,14 @@ class Core():
         rot = self.rotation
         # rot[1] *=2 #roll should be faster
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
+        #print(powers)
+        # print(self.direct_motors)
 
-        powers = convert_force_and_torque_to_motor_powers(powers)
-        
+        if not self.direct_motors:
+            powers = convert_force_and_torque_to_motor_powers(powers)
+        else:
+            powers = np.transpose(np.array([powers], dtype=np.float32))
+
         for i in range(len(powers)):
             powers[i] = powers[i] * self.power_scale
         pwms = convert_motor_powers_to_pwms(powers)
@@ -93,30 +100,27 @@ class Core():
         # manipulator: 12
         # buoyancy arm: 25
         # maybe problematic: 11 (bottom), 20 (left_up (not escs))
-        BUOYANCY_ARM_PIN = 25
-        GANTRY_RIGHT_PIN = 26
-        GANTRY_LEFT_PIN = 9
-        MANIPULATOR_PIN = 12
         pin_pwms += [
             {
-                'number': BUOYANCY_ARM_PIN, 
+                'number': MOTOR_CFG[0]['pin'], 
                 'value': 1500 + int(rot[0] * 200)
             },
             {
-                'number': GANTRY_RIGHT_PIN,
+                'number': MOTOR_CFG[1]['pin'],
                 'value': int(self.right_gantry)
             },
             {
-                'number': GANTRY_LEFT_PIN,
+                'number': MOTOR_CFG[2]['pin'],
                 'value': int(self.left_gantry)
             },
             {
-                'number': MANIPULATOR_PIN,
+                'number': MOTOR_CFG[3]['pin'],
                 'value': self.manipulator_pwm
             }
         ]
         
         if self.direct_motors : 
+            allmotors = THRUSTER_CFG + MOTOR_CFG
             pin_pwms = [
                 {
                     'number': THRUSTER_CFG[0]['pin'],
@@ -143,30 +147,35 @@ class Core():
                     'value': self.override["motor_f"]
                 },
                 {
-                    'number': BUOYANCY_ARM_PIN, 
+                    'number': MOTOR_CFG[0]['pin'],
                     'value': self.override["motor_g"]
                 },
                 {
-                    'number': GANTRY_RIGHT_PIN,
+                    'number': MOTOR_CFG[1]['pin'],
                     'value': self.override["motor_h"]
                 },
                 {
-                    'number': GANTRY_LEFT_PIN,
+                    'number': MOTOR_CFG[2]['pin'],
                     'value': self.override["motor_i"]
                 },
                 {
-                    'number': MANIPULATOR_PIN,
+                    'number': MOTOR_CFG[3]['pin'],
                     'value': self.override["motor_j"]
                 }
             ]   
         print(pin_pwms)
         
+        pwm_sum=0
+        for p in pin_pwms:
+            pwm_sum += abs(1500 - p['value'])
+        if pwm_sum > 1200 :
+            for i in range(len(pin_pwms)):
+                pin_pwms[i]['value'] = 1500 + (pin_pwms[i]['value'] - 1500) * 1200 / pwm_sum
         return pin_pwms
 
     async def consume_interface_websocket(self, packet):
         for key, value in packet.items():
             if hasattr(self, key):
-                # print(f"Setting {key}: {value}")
                 setattr(self, key, value)
 def quaternion_to_euler(q):
     w, x, y, z = q

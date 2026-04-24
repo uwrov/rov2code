@@ -33,8 +33,8 @@ def main():
 			"translation": [0, 0, 0],
 			"rotation": [0, 0, 0],
 			"manipulator_pwm": 1500,
-			"gantry_x": 1500,
-            "gantry_y": 1500,
+			"right_gantry": 1500,
+            "left_gantry": 1500,
             "buoyancy_arm": 1500,
 		}
         asyncio.run(core.consume_interface_websocket(data))

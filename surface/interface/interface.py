@@ -12,8 +12,10 @@ class Interface():
 
         uri = 'ws://localhost:8002'
         cwd = (pathlib.Path(__file__).parent / 'godot').resolve()
-        subprocess.Popen(['godot', '--quiet', 'interface.tscn', '-u', uri], cwd=cwd,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        if False:
+            subprocess.Popen(['godot', 'interface.tscn', '-u', uri], cwd=cwd)
+        else:
+            subprocess.Popen(['godot', 'interface.tscn', '-u', uri], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def set_task(self, task: 'Task'):
         self.task = task

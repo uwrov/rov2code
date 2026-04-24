@@ -68,7 +68,7 @@ func set_power_scale(value: float) -> void:
 
 func _on_data():
 	var data = _client.get_peer(1).get_packet().get_string_from_utf8()
-	print("Got data from server: ", data)
+	# print("Got data from server: ", data)
 	var parsed = JSON.parse(data).result
 #	$Label.text = data
 #	$Label.text = str(parsed)
@@ -83,7 +83,7 @@ func _on_data():
 	# IMU: x left, y forward, z up
 	# ROV: x left, y backward, z up
 	# Godot: x left, y up, z forward
-	if gyro[0] == null:
+	if gyro and gyro[0] == null:
 		$Label.text = str(gyro)
 		#$LabelDebug.text = str(gyro)
 		return
@@ -96,7 +96,8 @@ func _on_data():
 	var prev_rov_orientation = rov_orientation
 	
 	# convert quaternion from IMU to basis
-	rov_orientation = Basis(Quat(gyro[0], gyro[2], gyro[1], gyro[3]))
+	if gyro:
+		rov_orientation = Basis(Quat(gyro[0], gyro[2], gyro[1], gyro[3]))
 
 	# swap yaw and pitch
 	var old_x = rov_orientation.x
@@ -328,11 +329,11 @@ func _process(delta):
 			manipulator_pwm += 200
 	elif mode_index == 2:
 		if Input.is_action_pressed("button_b"):
-			toggle_manipulator *= -1
+			toggle_manipulator = not toggle_manipulator
 			if toggle_manipulator:
 				manipulator_pwm = 1700
 		if Input.is_action_pressed("button_x"):
-			toggle_manipulator *= -1
+			toggle_manipulator = not toggle_manipulator
 			if toggle_manipulator:
 				manipulator_pwm = 1300
 	elif mode_index == 3:
@@ -360,22 +361,28 @@ func _process(delta):
 	$"%RotationXValue".text = str("%0.3f" % rotation.x)
 	$"%RotationYValue".text = str("%0.3f" % rotation.y)
 	$"%RotationZValue".text = str("%0.3f" % rotation.z)
-	$"%TopValue".text = str("%0.1f" %thrusters.top)
-	$"%BottomValue".text = str("%0.1f" %thrusters.bottom)
-	$"%RightUpValue".text = str("%0.1f" %thrusters.right_up)
-	$"%LeftUpValue".text = str("%0.1f" %thrusters.left_up)
-	$"%RightFwdValue".text = str("%0.1f" %thrusters.right_back)
-	$"%LeftFwdValue".text = str("%0.1f" %thrusters.left_back)
+	if thrusters:
+		$"%TopValue".text = str("%0.1f" %thrusters.top)
+		$"%BottomValue".text = str("%0.1f" %thrusters.bottom)
+		$"%RightUpValue".text = str("%0.1f" %thrusters.right_up)
+		$"%LeftUpValue".text = str("%0.1f" %thrusters.left_up)
+		$"%RightFwdValue".text = str("%0.1f" %thrusters.right_back)
+		$"%LeftFwdValue".text = str("%0.1f" %thrusters.left_back)
 	
-	$"%GantryLeftValue".text = str("%0.1f" %motors.gantry_left)
-	$"%GantryRightValue".text = str("%0.1f" %motors.gantry_right)
-	$"%ManipulatorValue".text = str("%0.1f" %motors.manipulator)
-	$"%ArmValue".text = str("%0.1f" %motors.buoyancy_arm)
-	$"%ConduitSimplified".gantry_x = gantry["x"]
-	$"%ConduitSimplified".gantry_y = gantry["y"]
-	$"%ConduitSimplified".arm_angle = arm_angle
-	$"%ArmValue".text = str("%0.1f" %arm_angle)
-	
+	if motors:
+		$"%GantryLeftValue".text = str("%0.1f" %motors.gantry_left)
+		$"%GantryRightValue".text = str("%0.1f" %motors.gantry_right)
+		$"%ManipulatorValue".text = str("%0.1f" %motors.manipulator)
+		$"%ArmValue".text = str("%0.1f" %motors.buoyancy_arm)
+
+	if gantry:
+		$"%ConduitSimplified".gantry_x = gantry["x"]
+		$"%ConduitSimplified".gantry_y = gantry["y"]
+
+	if arm_angle:
+		$"%ConduitSimplified".arm_angle = arm_angle
+		$"%ArmValue".text = str("%0.1f" %arm_angle)
+		
 	$ServoCurrentPWMLabel.text = str("%0.1f" %manipulator_pwm)
 	
 	$InputLabel.text = str(translation)

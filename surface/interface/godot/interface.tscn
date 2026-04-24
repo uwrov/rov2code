@@ -101,6 +101,8 @@ margin_left = 193.0
 margin_top = 13.0
 margin_right = 269.0
 margin_bottom = 53.0
+focus_mode = 0
+enabled_focus_mode = 0
 
 [node name="Label2" type="Label" parent="."]
 margin_left = 8.0
