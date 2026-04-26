@@ -19,6 +19,8 @@ import cv2
 import numpy as np
 from pupil_apriltags import Detector
 
+from PoseFilter import PoseFilter
+
 # --- Camera & tag (meters for pose; fx, fy, cx, cy in pixels) ---
 CAMERA_INDEX = 0
 FRAME_WIDTH = 640
@@ -188,6 +190,9 @@ def main() -> None:
     print("AprilTag gantry nav — 'q' quit. Mapped IDs:", list(TAG_TARGETS.keys()))
     print("Calibrate CAMERA_PARAMS and TAG_SIZE_M for real robots.")
 
+    # Then in main():
+    filter = PoseFilter(buffer_size=10)
+
     while True:
         ok, frame = cap.read()
         if not ok:
@@ -200,6 +205,10 @@ def main() -> None:
             tag_size=TAG_SIZE_M,
         )
         det, tid = pick_detection(results, TAG_TARGETS, TAG_PRIORITY)
+
+        if det is not None:
+            actual = filter.update(pose_translation_m(det))
+
         if det is not None and tid is not None:
             target = TAG_TARGETS[tid]
             actual = pose_translation_m(det)
