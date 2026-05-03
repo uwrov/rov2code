@@ -15,8 +15,8 @@ import time
 import math
 
 logger = ROVLogger()
-TIME_TO_RAMP = 0.5
-TIME_PER_CYCLE = 0.1
+TIME_TO_RAMP = 1.0
+TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
 
@@ -35,7 +35,6 @@ class Core():
         self.right_gantry = 1500
         self.left_gantry = 1500
         self.buoyancy_arm = 1500
-        self.direct_motors = True
 
         self.angular_acceleration, self.accelerometer, self.thrusters, self.gantry,self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector, self.arm_angle =None, None,None,None, None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
@@ -78,6 +77,8 @@ class Core():
         prev = np.array(self.prev_pwms, dtype=float)
         delta_pwms = np.subtract(pwms,prev)
         delta_pwms = np.clip(delta_pwms, -RAMP_LIMIT, +RAMP_LIMIT)
+        #delta_pwms = np.clip(delta_pwms, -RAMP_LIMIT, +100000)
+        # delta_pwms = np.clip(delta_pwms, -100000, +100000)
         pwms = np.add(prev, delta_pwms)
         self.prev_pwms = pwms.tolist()
 
@@ -102,8 +103,8 @@ class Core():
         # maybe problematic: 11 (bottom), 20 (left_up (not escs))
         pin_pwms += [
             {
-                'number': MOTOR_CFG[0]['pin'], 
-                'value': 1500 + int(rot[0] * 200)
+                'number': MOTOR_CFG[0]['pin'], #arm
+                'value': 1500 + int(rot[0] * 100)
             },
             {
                 'number': MOTOR_CFG[1]['pin'],
@@ -163,7 +164,7 @@ class Core():
                     'value': self.override["motor_j"]
                 }
             ]   
-        print(pin_pwms)
+        # print(pin_pwms)
         
         pwm_sum=0
         for p in pin_pwms:

@@ -311,31 +311,31 @@ func _process(delta):
 		var mag = clamp((r - 0.02) / (1.0 - 0.02), 0.0, 1.0)
 		var cmd = v / r * pow(mag, 2.2)
 
-		motor_1 = cmd.y + cmd.x
-		motor_2 = cmd.y - cmd.x
+		motor_1 = cmd.x - cmd.y
+		motor_2 = cmd.y + cmd.x
 
 		var m = max(abs(motor_1), abs(motor_2))
 		if m > 1.0:
 			motor_1 /= m
 			motor_2 /= m
 
-	var left_gantry = int(round(1500 + motor_1 * 200.0))
-	var right_gantry  = int(round(1500 + motor_2 * 200.0))
+	var left_gantry = int(round(1500 + motor_1 * 100.0))
+	var right_gantry  = int(round(1500 + motor_2 * 100.0))
 	
 	if mode_index == 1:
 		if Input.is_action_pressed("button_b"):
-			manipulator_pwm -= 200
+			manipulator_pwm -= 75
 		if Input.is_action_pressed("button_x"):
-			manipulator_pwm += 200
+			manipulator_pwm += 75
 	elif mode_index == 2:
 		if Input.is_action_pressed("button_b"):
 			toggle_manipulator = not toggle_manipulator
 			if toggle_manipulator:
-				manipulator_pwm = 1700
+				manipulator_pwm = 1575
 		if Input.is_action_pressed("button_x"):
 			toggle_manipulator = not toggle_manipulator
 			if toggle_manipulator:
-				manipulator_pwm = 1300
+				manipulator_pwm = 1425
 	elif mode_index == 3:
 		if Input.is_action_pressed("button_b"):
 			print("foo")
@@ -390,7 +390,7 @@ func _process(delta):
 	if ready:
 		var data = {
 			"type": "control_input",
-			"translation": [translation.x * 60, translation.y * 80, translation.z * 60],
+			"translation": [-translation.x * 60, -translation.y * 80, -translation.z * 60],
 			"rotation": [rotation.x, rotation.y, rotation.z * 50],
 			"power_scale" : power_scale,
 			"manipulator_pwm": int(manipulator_pwm),

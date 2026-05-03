@@ -2,9 +2,14 @@ import time
 import busio
 import board
 import time
-from gpiozero import Servo
-from rov_config import thruster_config
-from rov_config import motor_config
+from .rov_config import thruster_config
+from .rov_config import motor_config
+
+from gpiozero.pins.pigpio import PiGPIOFactory
+from gpiozero import Servo, Device
+Device.pin_factory = PiGPIOFactory()
+
+
 class ROV:
     def __init__(self):
         self.servos = {}
@@ -13,6 +18,9 @@ class ROV:
         except Exception as e:
             print(e)
             print("UNABLE TO CONNECT TO IMU")
+        self.pwms = {}
+        self.gantry = {"x": 0.0, "y": 0.0}
+        self.arm_angle = 0.0
 
     # number = GPIO number
     # value = PWM value
@@ -29,10 +37,18 @@ class ROV:
         pass
 
     async def poll_sensors(self):
-        accelerometer = [(1500-PIN_HACK) * 0.01, 0.0, round(-9.81 + random.randint(-5, 5) * 0.01, 2)]
+        # readings = []
+
+        # readings_dict = {}
+        # for reading in readings:
+        #     readings_dict.update(reading)
+
+        # return readings_dict
+        accelerometer = [0.0, 0.0, 0.0]
         gyroscope = [0.0, 0.0, 0.0]
         thrusters = {}
         motors = {}
+        print(self.pwms)
         for t in thruster_config:
             pin = t["pin"]
             name = t["name"]
@@ -54,13 +70,12 @@ class ROV:
             motor_value *= m.get("direction", 1)
 
             motors[name] = motor_value
-        #TODO time-based translation instead of super small scalar to avoid framerate dependency
+        # TODO time-based translation instead of super small scalar to avoid framerate dependency
         self.gantry["x"] += (motors["gantry_left"] - motors["gantry_right"])/2 * 0.0003
         self.gantry["y"] += (motors["gantry_left"] + motors["gantry_right"])/2 * 0.0001
         self.gantry["x"] = max(-0.77, min(self.gantry["x"], 0.77))
         self.gantry["y"] = max(-0.17, min(self.gantry["y"], 0.17))
         self.arm_angle = (self.arm_angle + motors["buoyancy_arm"] * 0.04 )% 360
-        
         # TODO implement retrieving from simulation
         # kinda being done
         return {
