@@ -6,7 +6,6 @@ from .rov_config import motor_config as MOTOR_CFG
 from .accel_gyro_values import manipulate_gyro_accel
 
 from .motor_power_translator import convert_force_and_torque_to_motor_powers
-# from .pwm_translator import convert_motor_powers_to_pwms #old linear one
 from .force_to_pwm import convert_motor_powers_to_pwms
 from .logger import ROVLogger
 from .rov_config import imu_position as IMU_POS
@@ -50,7 +49,6 @@ class Core():
         self.task = task
 
     async def update_sensors(self, packet):
-        # print("Sensor update keys:", packet.keys())
         for key, value in packet.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -62,8 +60,6 @@ class Core():
         rot = self.rotation
         # rot[1] *=2 #roll should be faster
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
-        #print(powers)
-        # print(self.direct_motors)
 
         if not self.direct_motors:
             powers = convert_force_and_torque_to_motor_powers(powers)
@@ -77,8 +73,6 @@ class Core():
         prev = np.array(self.prev_pwms, dtype=float)
         delta_pwms = np.subtract(pwms,prev)
         delta_pwms = np.clip(delta_pwms, -RAMP_LIMIT, +RAMP_LIMIT)
-        #delta_pwms = np.clip(delta_pwms, -RAMP_LIMIT, +100000)
-        # delta_pwms = np.clip(delta_pwms, -100000, +100000)
         pwms = np.add(prev, delta_pwms)
         self.prev_pwms = pwms.tolist()
 
@@ -87,20 +81,6 @@ class Core():
             'value': pwms[i]
         } for i in range(len(pwms))]
 
-        # GANTRY_PINS = [0, 1]
-        # GANTRY_PWM_SCALING_FACTOR = 100
-
-        # top_right_pwm = int((self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR)
-        # top_left_pwm = int((-self.gantry_x + self.gantry_y) * GANTRY_PWM_SCALING_FACTOR) 
-
-        # pin_pwms.append({'number': GANTRY_PINS[0], 'value': top_right_pwm})
-        # pin_pwms.append({'number': GANTRY_PINS[1], 'value': top_left_pwm})
-
-        # pin_pwms = [26, 19, 13, 6, 11, 9, 20, 16, 12, 25]
-        # gantry: 26 (right_gantry), 9 (left_gantry)
-        # manipulator: 12
-        # buoyancy arm: 25
-        # maybe problematic: 11 (bottom), 20 (left_up (not escs))
         pin_pwms += [
             {
                 'number': MOTOR_CFG[0]['pin'], #arm
@@ -121,7 +101,6 @@ class Core():
         ]
         
         if self.direct_motors : 
-            allmotors = THRUSTER_CFG + MOTOR_CFG
             pin_pwms = [
                 {
                     'number': THRUSTER_CFG[0]['pin'],
@@ -164,7 +143,6 @@ class Core():
                     'value': self.override["motor_j"]
                 }
             ]   
-        # print(pin_pwms)
         
         pwm_sum=0
         for p in pin_pwms:
@@ -178,6 +156,7 @@ class Core():
         for key, value in packet.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+
 def quaternion_to_euler(q):
     w, x, y, z = q
     sinr_cosp = 2 * (w * x + y * z)
