@@ -72,7 +72,7 @@ class PointCloudViewer:
             self.cloud,
             scalars = "rgb",
             rgb=True,
-            point_size=3,
+            point_size=5,
             render_points_as_spheres=False,
             name="cloud",
             pickable=True,
