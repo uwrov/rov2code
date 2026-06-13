@@ -1,4 +1,3 @@
-import time
 import busio
 import board
 import time
@@ -15,6 +14,7 @@ class ROV:
         self.servos = {}
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
+            self.bno = adafruit_bno055.BNO055_I2C(i2c, address=0x29)
         except Exception as e:
             print(e)
             print("UNABLE TO CONNECT TO IMU")
@@ -36,19 +36,43 @@ class ROV:
     async def flush_pin_pwms(self):
         pass
 
-    async def poll_sensors(self):
-        # readings = []
+    def get_quaternion(self) -> dict:
+        if self.bno is None:
+            return {}
+        
+        try:
+            quat = self.bno.quaternion
+            if quat[0] is None:
+                return {}
 
-        # readings_dict = {}
-        # for reading in readings:
-        #     readings_dict.update(reading)
+            return {"quaternion": quat}
+        except:
+            return {}
 
-        # return readings_dict
-        accelerometer = [0.0, 0.0, 0.0]
-        gyroscope = [0.0, 0.0, 0.0]
+    def get_linear_acceleration(self) -> dict:
+        if self.bno is None:
+            return {}
+
+        try:
+            accel = np.array(self.bno.linear_acceleration)
+        
+            if accel[0] is None:
+                return {}
+
+            return {"accelerometer": accel}
+        except:
+            return {}
+
+    async def poll_sensors(self) -> dict:
+        readings = []
+
+        readings.append(self.get_quaternion())
+        readings.append(self.get_linear_acceleration())
+
         thrusters = {}
         motors = {}
         print(self.pwms)
+        
         for t in thruster_config:
             pin = t["pin"]
             name = t["name"]
@@ -60,6 +84,7 @@ class ROV:
             thrust *= t.get("handing", 1)
 
             thrusters[name] = thrust
+            
         for m in motor_config:
             pin = m["pin"]
             name = m["name"]
@@ -68,8 +93,9 @@ class ROV:
             motor_value = (pwm - 1500)
 
             motor_value *= m.get("direction", 1)
-
+            
             motors[name] = motor_value
+        
         # TODO time-based translation instead of super small scalar to avoid framerate dependency
         self.gantry["x"] += (motors["gantry_left"] - motors["gantry_right"])/2 * 0.0003
         self.gantry["y"] += (motors["gantry_left"] + motors["gantry_right"])/2 * 0.0001
@@ -78,11 +104,14 @@ class ROV:
         self.arm_angle = (self.arm_angle + motors["buoyancy_arm"] * 0.04 )% 360
         # TODO implement retrieving from simulation
         # kinda being done
-        return {
-            "quaternion": gyroscope,       # match Godot expectation
-            "accelerometer": accelerometer,
-            "thrusters": thrusters,
-            "motors": motors,
-            "gantry" : self.gantry,
-            "arm_angle" : self.arm_angle
-        }
+        
+        readings.append({"thrusters": thrusters})
+        readings.append({"motors": motors})
+        readings.append({"gantry": self.gantry})
+        readings.append({"arm_angle": self.arm_angle})
+        
+        readings_dict = {}
+        for reading in readings:
+            readings_dict.update(reading)
+
+        return readings_dict

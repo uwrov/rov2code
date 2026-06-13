@@ -50,7 +50,7 @@ rov_mass=8.17
 thruster_config = [
     {
         'name': 'top',
-        'location': [0.008573, -0.118413, 0.153494],
+        'location': [0.005252, -0.118399, 0.158790],
         'orientation': [1.0, 0.0, 0.0],
         'pin': 13, 
         'model': 't-200',
@@ -61,7 +61,7 @@ thruster_config = [
     },
     {
         'name': 'bottom',
-        'location': [0.077483, -0.118504, -0.153494],
+        'location': [0.074161, -0.118399, -0.158790],
         'orientation': [1.0, 0.0, 0.0],
         'pin': 20,
         'model': 't-200',
