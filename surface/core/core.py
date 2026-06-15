@@ -19,7 +19,6 @@ TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
 
-
 class Core():
     def __init__(self):
         self.interface, self.task = None, None
@@ -40,6 +39,10 @@ class Core():
         self.last_rotational_velocity = None
         self.last_depth = None
 
+        self.depth_i = 0.0
+        self.depth_prev_error = 0.0
+        self.depth_prev_time = None
+
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
 
     def set_interface(self, interface: 'Interface'):
@@ -58,11 +61,78 @@ class Core():
         trans = self.translation
         # trans[0] *=3 #Strafe should be faster
         rot = self.rotation
-        # rot[1] *=2 #roll should be faster
+        # rot[1] *=2 #roll should be faster     
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
 
         if not self.direct_motors:
-            powers = convert_force_and_torque_to_motor_powers(powers)
+            DEADBAND = 0.1
+            depth_hold = True
+            if abs(trans[2]) > DEADBAND or self.depth is None or self.gravity_vector is None:
+                # If we're manually controlling depth or missing sensor data, disable depth hold
+                powers = convert_force_and_torque_to_motor_powers(powers)
+
+                if self.depth is not None:
+                    self.last_depth = np.array(self.depth)
+
+                self.depth_i = 0.0
+                self.depth_prev_error = 0.0
+                self.depth_prev_time = None
+
+            elif depth_hold and self.last_depth is None:
+                self.last_depth = np.array(self.depth)
+                self.depth_i = 0.0
+                self.depth_prev_error = 0.0
+                self.depth_prev_time = None
+                powers = convert_force_and_torque_to_motor_powers(powers)
+            
+            elif depth_hold and self.last_depth is not None:
+                # If not controlling depth, we hold depth using PID
+                now = time.time()
+
+                if self.depth_prev_time is None:
+                    self.depth_prev_time = now
+
+                dt = now - self.depth_prev_time
+                self.depth_prev_time = now
+
+                error = float(self.last_depth - self.depth)
+
+                self.depth_i += error * dt
+                self.depth_i = np.clip(self.depth_i, -2.0, 2.0)
+
+                if dt > 0:
+                    d_error = (error - self.depth_prev_error) / dt
+                else:
+                    d_error = 0.0
+
+                self.depth_prev_error = error
+
+                DEPTH_P = 0.5
+                DEPTH_I = 0.0
+                DEPTH_D = 0.1
+
+                correction = (
+                    DEPTH_P * error
+                    + DEPTH_I * self.depth_i
+                    + DEPTH_D * d_error
+                )
+
+                correction = np.clip(correction, -0.5, 0.5)
+
+                gravity = np.array(self.gravity_vector, dtype=float)
+                gravity_norm = np.linalg.norm(gravity)
+
+                if gravity_norm > 0.1:
+                    gravity_unit = gravity / gravity_norm
+                    correction_vector = correction * gravity_unit
+
+                    powers[:3] = (
+                        np.array(powers[:3], dtype=float)
+                        + correction_vector
+                    ).tolist()
+
+                powers = convert_force_and_torque_to_motor_powers(powers)
+
         else:
             powers = np.transpose(np.array([powers], dtype=np.float32))
 

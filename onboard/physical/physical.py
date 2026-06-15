@@ -1,13 +1,15 @@
 import busio
 import board
 import time
+import numpy as np
 from .rov_config import thruster_config
 from .rov_config import motor_config
 
 from gpiozero.pins.pigpio import PiGPIOFactory
 from gpiozero import Servo, Device
 Device.pin_factory = PiGPIOFactory()
-
+from onboard.physical.drivers.ms5837 import ms5837
+import adafruit_bno055
 
 class ROV:
     def __init__(self):
@@ -18,6 +20,18 @@ class ROV:
         except Exception as e:
             print(e)
             print("UNABLE TO CONNECT TO IMU")
+
+
+        try:
+            self.bar02 = ms5837.MS5837_02BA()
+            if not self.bar02.init():
+                raise Exception()
+        except Exception as e:
+            print(e)
+            print("UNABLE TO CONNECT TO DEPTH SENSOR")
+            self.bar02 = None
+
+        
         self.pwms = {}
         self.gantry = {"x": 0.0, "y": 0.0}
         self.arm_angle = 0.0
@@ -61,6 +75,41 @@ class ROV:
 
             return {"accelerometer": accel}
         except:
+            return {}    
+
+    def get_depth(self) -> dict:
+        if self.bar02 is None:
+            return {}
+
+        try:
+            if self.bar02.read():
+                return {"depth": self.bar02.depth()}
+            return {}
+        except:
+            return {}
+        
+    def get_gravity_vector(self) -> dict:
+        if self.bno is None:
+            return {}
+        
+        vec = self.bno.gravity
+        if vec[0] is None:
+            return {}
+
+        return {"gravity_vector": [-vec[0], -vec[1], vec[2]]}
+        
+    def get_angular_velocity(self) -> dict:
+        if self.bno is None:
+            return {}
+
+        try:
+            gyro = self.bno.gyro
+
+            if gyro[0] is None:
+                return {}
+
+            return {"rotational_velocity": list(gyro)}
+        except:
             return {}
 
     async def poll_sensors(self) -> dict:
@@ -68,6 +117,10 @@ class ROV:
 
         readings.append(self.get_quaternion())
         readings.append(self.get_linear_acceleration())
+        readings.append(self.get_depth())
+
+        readings.append(self.get_gravity_vector())
+        readings.append(self.get_angular_velocity())
 
         thrusters = {}
         motors = {}
