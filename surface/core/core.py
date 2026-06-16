@@ -46,7 +46,7 @@ class Core():
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
         
-        self.cam = cv2.VideoCapture("http://172.25.250.1:8554/")
+        self.cam = cv2.VideoCapture("http://172.25.250.1:8556/")
         self.img_counter = 0
 
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
@@ -71,13 +71,14 @@ class Core():
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]  
 
         if self.capture_frame:
-            ret, frame = cam.read()   
+            ret, frame = self.cam.read()   
             
             if ret:
-                filename = "../analysis/frame_{self.img_counter}.png"
+                img = cv2.imread("frame_" + str(self.img_counter) + ".png")
+                filename = "../analysis/frame_" + str(self.img_counter) + ".png"
                 cv2.imwrite(filename, frame)
                 self.img_counter += 1
-                print("Captured {filename}")
+                print("Captured " + filename)
             else:
                 print("Failed to capture frame")
 
