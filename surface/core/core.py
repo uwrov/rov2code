@@ -67,7 +67,7 @@ class Core():
         if not self.direct_motors:
             DEADBAND = 0.1
             depth_hold = True
-            if abs(trans[2]) > DEADBAND or self.depth is None or self.gravity_vector is None:
+            if abs(trans[2]) > DEADBAND or self.depth is None:
                 # If we're manually controlling depth or missing sensor data, disable depth hold
                 powers = convert_force_and_torque_to_motor_powers(powers)
 
@@ -119,17 +119,7 @@ class Core():
 
                 correction = np.clip(correction, -0.5, 0.5)
 
-                gravity = np.array(self.gravity_vector, dtype=float)
-                gravity_norm = np.linalg.norm(gravity)
-
-                if gravity_norm > 0.1:
-                    gravity_unit = gravity / gravity_norm
-                    correction_vector = correction * gravity_unit
-
-                    powers[:3] = (
-                        np.array(powers[:3], dtype=float)
-                        + correction_vector
-                    ).tolist()
+                powers[2] += correction
 
                 powers = convert_force_and_torque_to_motor_powers(powers)
 
