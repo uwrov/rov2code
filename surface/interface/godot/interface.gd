@@ -177,6 +177,7 @@ var error_integral = Vector3.ZERO
 
 var spinPWM = 1500
 var toggle_manipulator = false
+var captureFrame = false
 func _process(delta):
 	
 #	time += delta
@@ -341,7 +342,11 @@ func _process(delta):
 			print("foo")
 		if Input.is_action_pressed("button_x"):
 			print("bar")
-
+	if Input.is_action_just_pressed("Capture_frame"):
+		captureFrame = true
+		print("foo")
+	else:
+		captureFrame = false
 	if Input.is_action_pressed("light_on"):
 		light_on = true
 	else:
@@ -397,6 +402,7 @@ func _process(delta):
 			"left_gantry": left_gantry,
 			"right_gantry": right_gantry,
 			"light_on": light_on,
+			"capture_frame" : captureFrame,
 			"direct_motors" : $"%DirectMotorsButton".pressed,
 			"override" : override}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

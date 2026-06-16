@@ -55,6 +55,12 @@ class ROV:
 
         try:
             if self.bar02.read():
+                print(("Depth: %0.03f m P: %0.1f mbar  %0.3f psi\tT: %0.2f C  %0.2f F") % (
+                self.bar02.depth(), # saltwater depth
+                self.bar02.pressure(), # Default is mbar (no arguments)
+                self.bar02.pressure(ms5837.UNITS_psi), # Request psi
+                self.bar02.temperature(), # Default is degrees C (no arguments)
+                self.bar02.temperature(ms5837.UNITS_Farenheit))) # Request Farenheit
                 return {"depth": self.bar02.depth()}
             return {}
         except:
@@ -64,7 +70,7 @@ class ROV:
         readings = []
 
         readings.append(self.get_depth())
-        readings.append({"quaternion": [1.0, 0.0, 0.0, 0.0]})
+        readings.append({"quaternion": [1.0, 0.0, 0.0]})
         readings.append({"accelerometer": [0.0, 0.0, 0.0]})
 
         thrusters = {}

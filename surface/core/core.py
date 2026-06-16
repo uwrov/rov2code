@@ -13,11 +13,16 @@ from .rov_config import imu_position as IMU_POS
 import time
 import math
 
+import cv2
+
 logger = ROVLogger()
 TIME_TO_RAMP = 1.0
 TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
+
+cam = cv2.VideoCapture("http://172.25.250.1:8554/")
+img_counter = 0
 
 class Core():
     def __init__(self):
@@ -33,6 +38,7 @@ class Core():
         self.right_gantry = 1500
         self.left_gantry = 1500
         self.buoyancy_arm = 1500
+        self.capture_frame = False
 
         self.angular_acceleration, self.accelerometer, self.thrusters, self.gantry,self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector, self.arm_angle =None, None,None,None, None, None, None, None, None, None
         self.rotational_velocity_accum = np.zeros(3)
@@ -42,6 +48,8 @@ class Core():
         self.depth_i = 0.0
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
+
+        self.cam = cv2.VideoCapture("http://172.25.250.1:8554/")
 
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
 
@@ -62,8 +70,14 @@ class Core():
         # trans[0] *=3 #Strafe should be faster
         rot = self.rotation
         # rot[1] *=2 #roll should be faster     
-        powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
+        powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]  
 
+        if self.capture_frame:
+            ret, frame = cam.read()   
+            cv2.imwrite("../analysis/", frame)
+            img_counter += 1
+            print("Captured")
+            
         if not self.direct_motors:
             DEADBAND = 0.1
             depth_hold = True
