@@ -21,9 +21,6 @@ TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
 
-cam = cv2.VideoCapture("http://172.25.250.1:8554/")
-img_counter = 0
-
 class Core():
     def __init__(self):
         self.interface, self.task = None, None
@@ -48,8 +45,9 @@ class Core():
         self.depth_i = 0.0
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
-
+        
         self.cam = cv2.VideoCapture("http://172.25.250.1:8554/")
+        self.img_counter = 0
 
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
 
@@ -74,9 +72,15 @@ class Core():
 
         if self.capture_frame:
             ret, frame = cam.read()   
-            cv2.imwrite("../analysis/", frame)
-            img_counter += 1
-            print("Captured")
+            
+            if ret:
+                filename = "../analysis/frame_{self.img_counter}.png"
+                cv2.imwrite(filename, frame)
+                self.img_counter += 1
+                print("Captured {filename}")
+            else:
+                print("Failed to capture frame")
+
             
         if not self.direct_motors:
             DEADBAND = 0.1
