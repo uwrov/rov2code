@@ -13,6 +13,8 @@ from .rov_config import imu_position as IMU_POS
 import time
 import math
 
+import os
+
 import cv2
 
 logger = ROVLogger()
@@ -46,7 +48,10 @@ class Core():
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
         
-        self.cam = cv2.VideoCapture("http://172.25.250.1:8556/")
+        try:
+            self.cam = cv2.VideoCapture("http://172.25.250.1:8556/")
+        finally:
+            pass
         self.img_counter = 0
 
         self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
@@ -69,19 +74,31 @@ class Core():
         rot = self.rotation
         # rot[1] *=2 #roll should be faster     
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]  
-
-        if self.capture_frame:
-            ret, frame = self.cam.read()   
-            
-            if ret:
-                img = cv2.imread("frame_" + str(self.img_counter) + ".png")
-                filename = "../analysis/frame_" + str(self.img_counter) + ".png"
-                cv2.imwrite(filename, frame)
-                self.img_counter += 1
-                print("Captured " + filename)
-            else:
-                print("Failed to capture frame")
-
+        # print(self.capture_frame)
+        # if self.capture_frame:            
+        #         print("Space")
+        try:
+            ret, frame = self.cam.read()
+        
+            if self.capture_frame:            
+                print("Space")
+                if ret:
+                    filename = "D:/frame_" + str(self.img_counter) + ".png"
+                    print(os.getcwd())
+                    success = cv2.imwrite(filename, frame)
+                    self.img_counter += 1
+                    if success:
+                        print("Yes")
+                    else:
+                        print("Couldnt save to thumb drive, saving to surface/analysis")
+                        filename = r"C:\Users\uwrov\Documents\GitHub\rov2code\surface\analysis\frame_" + str(self.img_counter) + ".png"
+                        cv2.imwrite(filename, frame)
+                else:
+                    print("Failed to capture frame")
+                
+                self.capture_frame = False
+        finally:
+            pass
             
         if not self.direct_motors:
             DEADBAND = 0.1
@@ -226,7 +243,7 @@ class Core():
         pwm_sum=0
         for p in pin_pwms:
             pwm_sum += abs(1500 - p['value'])
-        if pwm_sum > 1200 :
+        if pwm_sum > 3400 :
             for i in range(len(pin_pwms)):
                 pin_pwms[i]['value'] = 1500 + (pin_pwms[i]['value'] - 1500) * 1200 / pwm_sum
         return pin_pwms

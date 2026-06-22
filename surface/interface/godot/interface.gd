@@ -16,9 +16,8 @@ var hold_repeat_delay := 0.1  # Seconds between repeated steps
 var mode_index = 1
 
 var mode_names = {
-	1: "CW/CCW hold",
-	2: "CW/CCW toggle",
-	3: "Toolchanging",
+	1: "fast",
+	2: "slow",
 }
 var totalModes = mode_names.size()
 
@@ -29,7 +28,7 @@ func _ready():
 	_client.connect("connection_error", self, "_closed")
 	_client.connect("connection_established", self, "_connected")
 	_client.connect("data_received", self, "_on_data")
-	
+	OS.window_position = Vector2(0, 0)
 	var err = _client.connect_to_url(websocket_url)
 	if err != OK:
 		print("Unable to connect")
@@ -198,7 +197,7 @@ func _process(delta):
 			hold_time = hold_repeat_delay
 	elif next_mode or prev_mode:
 		hold_time -= delta
-		if hold_time <= 0.0:
+		if hold_time <= -0.25:
 			mode_index += 1 if next_mode else -1
 				
 			if mode_index > totalModes:
@@ -208,7 +207,7 @@ func _process(delta):
 				
 			hold_time = hold_repeat_delay
 			
-		$LabelDebug.text = "Manipulator Mode: %s (Index: %d)" % [
+		$LabelDebug.text = "Mode: %s (Index: %d)" % [
 			mode_names.get(mode_index, "Unknown"), 
 			mode_index
 		]
@@ -308,9 +307,9 @@ func _process(delta):
 	var motor_1 = 0.0
 	var motor_2 = 0.0
 
-	if r >= 0.02:
-		var mag = clamp((r - 0.02) / (1.0 - 0.02), 0.0, 1.0)
-		var cmd = v / r * pow(mag, 2.2)
+	if r >= 0.005:
+		var mag = clamp((r - 0.005) / (1.0 - 0.005), 0.0, 1.0)
+		var cmd = v / r * pow(mag, 3)
 
 		motor_1 = cmd.x - cmd.y
 		motor_2 = cmd.y + cmd.x
@@ -319,32 +318,38 @@ func _process(delta):
 		if m > 1.0:
 			motor_1 /= m
 			motor_2 /= m
-
-	var left_gantry = int(round(1500 + motor_1 * 100.0))
-	var right_gantry  = int(round(1500 + motor_2 * 100.0))
+	var deadband = 20
+	var delta1 = motor_1 * 140.0
+	if delta1 > 5.0:
+		delta1 += deadband
+	elif delta1 < -5.0:
+		delta1 -= deadband
+	var delta2 =  motor_2 * 140.0
+	if delta2 > 5.0:
+		delta2 += deadband
+	elif delta2 < -5.0:
+		delta2 -= deadband
+	var left_gantry = int(round(1500 + delta1 ))
+	var right_gantry  = int(round(1500 + delta2))
 	
 	if mode_index == 1:
+		if Input.is_action_pressed("button_b"):
+			manipulator_pwm -= 150
+		if Input.is_action_pressed("button_x"):
+			manipulator_pwm += 150
+	elif mode_index == 2:
 		if Input.is_action_pressed("button_b"):
 			manipulator_pwm -= 75
 		if Input.is_action_pressed("button_x"):
 			manipulator_pwm += 75
-	elif mode_index == 2:
-		if Input.is_action_pressed("button_b"):
-			toggle_manipulator = not toggle_manipulator
-			if toggle_manipulator:
-				manipulator_pwm = 1575
-		if Input.is_action_pressed("button_x"):
-			toggle_manipulator = not toggle_manipulator
-			if toggle_manipulator:
-				manipulator_pwm = 1425
 	elif mode_index == 3:
 		if Input.is_action_pressed("button_b"):
 			print("foo")
 		if Input.is_action_pressed("button_x"):
 			print("bar")
-	if Input.is_action_just_pressed("Capture_frame"):
+	if Input.is_action_pressed("Capture_frame"):
 		captureFrame = true
-		print("foo")
+		print(captureFrame)
 	else:
 		captureFrame = false
 	if Input.is_action_pressed("light_on"):
