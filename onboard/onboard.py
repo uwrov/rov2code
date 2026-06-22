@@ -6,6 +6,7 @@ import os
 import websockets
 from websockets.client import ClientConnection
 
+
 def main():
     print('onboard client starting')
     rov, websocket_uri = setup_using_command_line_args()

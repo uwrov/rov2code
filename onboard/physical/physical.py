@@ -1,9 +1,13 @@
 import busio
 import board
 import time
-from gpiozero import Servo
-import adafruit_bno055
-import np
+from .rov_config import thruster_config
+from .rov_config import motor_config
+
+from gpiozero.pins.pigpio import PiGPIOFactory
+from gpiozero import Servo, Device
+Device.pin_factory = PiGPIOFactory()
+
 
 class ROV:
     def __init__(self):
@@ -14,6 +18,9 @@ class ROV:
         except Exception as e:
             print(e)
             print("UNABLE TO CONNECT TO IMU")
+        self.pwms = {}
+        self.gantry = {"x": 0.0, "y": 0.0}
+        self.arm_angle = 0.0
 
     # number = GPIO number
     # value = PWM value
@@ -62,7 +69,47 @@ class ROV:
         readings.append(self.get_quaternion())
         readings.append(self.get_linear_acceleration())
 
-        # Will be a list of (maybe empty) dictionaries of readings to report
+        thrusters = {}
+        motors = {}
+        print(self.pwms)
+        
+        for t in thruster_config:
+            pin = t["pin"]
+            name = t["name"]
+            pwm = self.pwms.get(pin, 1500)
+
+            thrust = (pwm - 1500)
+
+            thrust *= t.get("direction", 1)
+            thrust *= t.get("handing", 1)
+
+            thrusters[name] = thrust
+            
+        for m in motor_config:
+            pin = m["pin"]
+            name = m["name"]
+            pwm = self.pwms.get(pin, 1500)
+
+            motor_value = (pwm - 1500)
+
+            motor_value *= m.get("direction", 1)
+            
+            motors[name] = motor_value
+        
+        # TODO time-based translation instead of super small scalar to avoid framerate dependency
+        self.gantry["x"] += (motors["gantry_left"] - motors["gantry_right"])/2 * 0.0003
+        self.gantry["y"] += (motors["gantry_left"] + motors["gantry_right"])/2 * 0.0001
+        self.gantry["x"] = max(-0.77, min(self.gantry["x"], 0.77))
+        self.gantry["y"] = max(-0.17, min(self.gantry["y"], 0.17))
+        self.arm_angle = (self.arm_angle + motors["buoyancy_arm"] * 0.04 )% 360
+        # TODO implement retrieving from simulation
+        # kinda being done
+        
+        readings.append({"thrusters": thrusters})
+        readings.append({"motors": motors})
+        readings.append({"gantry": self.gantry})
+        readings.append({"arm_angle": self.arm_angle})
+        
         readings_dict = {}
         for reading in readings:
             readings_dict.update(reading)

@@ -1,7 +1,7 @@
-[gd_scene load_steps=7 format=2]
+[gd_scene load_steps=9 format=2]
 
 [ext_resource path="res://interface.gd" type="Script" id=1]
-[ext_resource path="res://objects/rov22/rov22.tscn" type="PackedScene" id=2]
+[ext_resource path="res://objects/rov26/ConduitSimplifiedREAL.tscn" type="PackedScene" id=2]
 
 [sub_resource type="SpatialMaterial" id=3]
 flags_unshaded = true
@@ -18,6 +18,14 @@ albedo_color = Color( 0, 1, 0, 1 )
 flags_unshaded = true
 albedo_color = Color( 0, 0, 1, 1 )
 
+[sub_resource type="ProceduralSky" id=5]
+sky_top_color = Color( 0.95, 0.95, 0.95, 1 )
+sky_horizon_color = Color( 0.98, 0.98, 0.98, 1 )
+
+[sub_resource type="Environment" id=6]
+background_mode = 3
+background_sky = SubResource( 5 )
+
 [node name="Interface" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -31,7 +39,7 @@ margin_top = -176.0
 margin_right = 312.0
 margin_bottom = -162.0
 rect_scale = Vector2( 2, 2 )
-text = "Manipulator Mode: Dual Axis Manipulator Mode"
+text = "CW/CCW hold"
 
 [node name="LabelDebug2" type="Label" parent="."]
 anchor_top = 1.0
@@ -88,10 +96,13 @@ margin_bottom = 22.0
 text = "Input info goes here"
 
 [node name="DirectMotorsButton" type="CheckButton" parent="."]
+unique_name_in_owner = true
 margin_left = 193.0
 margin_top = 13.0
 margin_right = 269.0
 margin_bottom = 53.0
+focus_mode = 0
+enabled_focus_mode = 0
 
 [node name="Label2" type="Label" parent="."]
 margin_left = 8.0
@@ -101,6 +112,7 @@ margin_bottom = 38.0
 text = "Direct motors instead of axes"
 
 [node name="ServoPWMSlider" type="HSlider" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 48.0
@@ -112,6 +124,7 @@ max_value = 2000.0
 value = 1500.0
 
 [node name="ServoLowerPWMLabel" type="Label" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 8.0
@@ -121,6 +134,7 @@ margin_bottom = -24.2
 text = "1000"
 
 [node name="ServoUpperPWMLabel" type="Label" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 784.0
@@ -131,6 +145,7 @@ focus_mode = 2
 text = "2000"
 
 [node name="ServoCurrentPWMLabel" type="Label" parent="."]
+visible = false
 anchor_right = 0.797
 anchor_bottom = 0.147
 margin_left = 400.0
@@ -290,6 +305,221 @@ margin_bottom = 50.0
 text = "0.000"
 align = 2
 
+[node name="ThrusterInfoContainer" type="PanelContainer" parent="."]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = -181.0
+margin_top = -138.0
+__meta__ = {
+"_edit_group_": true
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ThrusterInfoContainer"]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 174.0
+margin_bottom = 131.0
+
+[node name="Label" type="Label" parent="ThrusterInfoContainer/VBoxContainer"]
+margin_right = 167.0
+margin_bottom = 14.0
+text = "Thruster Inputs:"
+align = 1
+
+[node name="GridContainer" type="GridContainer" parent="ThrusterInfoContainer/VBoxContainer"]
+margin_top = 18.0
+margin_right = 167.0
+margin_bottom = 122.0
+columns = 2
+
+[node name="TopLabel" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+margin_right = 127.0
+margin_bottom = 14.0
+size_flags_horizontal = 3
+text = "Top:"
+
+[node name="TopValue" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_right = 167.0
+margin_bottom = 14.0
+text = "0.000"
+align = 2
+
+[node name="BottomLabel" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 18.0
+margin_right = 127.0
+margin_bottom = 32.0
+size_flags_horizontal = 3
+text = "Bottom:"
+
+[node name="BottomValue" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 18.0
+margin_right = 167.0
+margin_bottom = 32.0
+text = "0.000"
+align = 2
+
+[node name="LeftFwdLabel" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 36.0
+margin_right = 127.0
+margin_bottom = 50.0
+size_flags_horizontal = 3
+text = "Left fwd:"
+
+[node name="LeftFwdValue" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 36.0
+margin_right = 167.0
+margin_bottom = 50.0
+text = "0.000"
+align = 2
+
+[node name="RightFwdLabel" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 54.0
+margin_right = 127.0
+margin_bottom = 68.0
+size_flags_horizontal = 3
+text = "Right fwd:"
+
+[node name="RightFwdValue" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 54.0
+margin_right = 167.0
+margin_bottom = 68.0
+text = "0.000"
+align = 2
+
+[node name="LeftUpLabel" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 72.0
+margin_right = 127.0
+margin_bottom = 86.0
+size_flags_horizontal = 3
+text = "Left up:"
+
+[node name="LeftUpValue" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 72.0
+margin_right = 167.0
+margin_bottom = 86.0
+text = "0.000"
+align = 2
+
+[node name="RightupLabel" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 90.0
+margin_right = 127.0
+margin_bottom = 104.0
+size_flags_horizontal = 3
+text = "Right Up:"
+
+[node name="RightUpValue" type="Label" parent="ThrusterInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 90.0
+margin_right = 167.0
+margin_bottom = 104.0
+text = "0.000"
+align = 2
+
+[node name="MotorInfoContainer" type="PanelContainer" parent="."]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = -181.0
+margin_top = -246.0
+margin_bottom = -146.0
+__meta__ = {
+"_edit_group_": true
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MotorInfoContainer"]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 174.0
+margin_bottom = 93.0
+
+[node name="Label" type="Label" parent="MotorInfoContainer/VBoxContainer"]
+margin_right = 167.0
+margin_bottom = 14.0
+text = "Motor Inputs:"
+align = 1
+
+[node name="GridContainer" type="GridContainer" parent="MotorInfoContainer/VBoxContainer"]
+margin_top = 18.0
+margin_right = 167.0
+margin_bottom = 86.0
+columns = 2
+
+[node name="GantryLeftLabel" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+margin_right = 127.0
+margin_bottom = 14.0
+size_flags_horizontal = 3
+text = "Left Gantry:"
+
+[node name="GantryLeftValue" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_right = 167.0
+margin_bottom = 14.0
+text = "0.000"
+align = 2
+
+[node name="GantryRightLabel" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 18.0
+margin_right = 127.0
+margin_bottom = 32.0
+size_flags_horizontal = 3
+text = "Right Gantry:"
+
+[node name="GantryRightValue" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 18.0
+margin_right = 167.0
+margin_bottom = 32.0
+text = "0.000"
+align = 2
+
+[node name="ManipulatorLabel" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 36.0
+margin_right = 127.0
+margin_bottom = 50.0
+size_flags_horizontal = 3
+text = "Manipulator:"
+
+[node name="ManipulatorValue" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 36.0
+margin_right = 167.0
+margin_bottom = 50.0
+text = "0.000"
+align = 2
+
+[node name="ArmLabel" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+margin_top = 54.0
+margin_right = 127.0
+margin_bottom = 68.0
+size_flags_horizontal = 3
+text = "Arm:"
+
+[node name="ArmValue" type="Label" parent="MotorInfoContainer/VBoxContainer/GridContainer"]
+unique_name_in_owner = true
+margin_left = 131.0
+margin_top = 54.0
+margin_right = 167.0
+margin_bottom = 68.0
+text = "0.000"
+align = 2
+
 [node name="PowerBoost" type="Label" parent="."]
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -301,15 +531,18 @@ text = "Power scale"
 align = 2
 
 [node name="Camera" type="Camera" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5.57416 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8 )
 
 [node name="Base" type="Spatial" parent="."]
 
 [node name="ROVProxy" type="Spatial" parent="Base"]
 unique_name_in_owner = true
 
-[node name="ROV22" parent="Base/ROVProxy" instance=ExtResource( 2 )]
-transform = Transform( 10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, -1.65092 )
+[node name="ConduitSimplified" parent="Base/ROVProxy" instance=ExtResource( 2 )]
+unique_name_in_owner = true
+transform = Transform( 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0 )
+gantry_x = 0.203
+gantry_y = 0.168
 
 [node name="Axes" type="Spatial" parent="Base"]
 
@@ -327,3 +560,6 @@ mesh = SubResource( 2 )
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2 )
 material_override = SubResource( 1 )
 mesh = SubResource( 2 )
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource( 6 )
