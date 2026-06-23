@@ -177,6 +177,7 @@ var error_integral = Vector3.ZERO
 var spinPWM = 1500
 var toggle_manipulator = false
 var captureFrame = false
+var depthHold = false
 func _process(delta):
 	
 #	time += delta
@@ -352,6 +353,9 @@ func _process(delta):
 		print(captureFrame)
 	else:
 		captureFrame = false
+	if Input.is_action_just_pressed("depth_hold"):
+		depthHold = !depthHold
+		print("Depth Hold: ", depthHold)
 	if Input.is_action_pressed("light_on"):
 		light_on = true
 	else:
@@ -408,6 +412,7 @@ func _process(delta):
 			"right_gantry": right_gantry,
 			"light_on": light_on,
 			"capture_frame" : captureFrame,
+			"depth_hold" : depthHold,
 			"direct_motors" : $"%DirectMotorsButton".pressed,
 			"override" : override}
 		_client.get_peer(1).put_packet(JSON.print(data).to_ascii())

@@ -44,6 +44,7 @@ class Core():
         self.last_rotational_velocity = None
         self.last_depth = None
 
+        self.depth_hold = False
         self.depth_i = 0.0
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
@@ -100,64 +101,73 @@ class Core():
         finally:
             pass
             
+        # Depth Hold Block
         if not self.direct_motors:
             DEADBAND = 0.1
-            depth_hold = True
-            if abs(trans[2]) > DEADBAND or self.depth is None:
-                # If we're manually controlling depth or missing sensor data, disable depth hold
-                powers = convert_force_and_torque_to_motor_powers(powers)
 
+            if self.depth_hold and self.depth is not None and abs(trans[2]) > DEADBAND:
+                if self.last_depth is None:
+                    # First cycle of depth hold to initialize
+                    self.last_depth = np.array(self.depth)
+                    self.depth_i = 0.0
+                    self.depth_prev_error = 0.0
+                    self.depth_prev_time = None
+                    powers = convert_force_and_torque_to_motor_powers(powers)
+
+                else:  
+                    # If not controlling depth, we hold depth using PID
+                    
+                    # These are currently arbitrary values (NEED TUNING!)
+                    DEPTH_P = 0.8
+                    DEPTH_I = 0.0
+                    DEPTH_D = 0.2
+                    
+                    now = time.time()
+
+                    if self.depth_prev_time is None:
+                        self.depth_prev_time = now
+
+                    dt = now - self.depth_prev_time
+                    self.depth_prev_time = now
+
+                    error = np.array(self.depth) - self.last_depth
+                    print ("Depth Error: ", error)
+
+                    if np.abs(error) > 0.05:
+                        self.depth_i += error * dt
+                        self.depth_i = np.clip(self.depth_i, -2.0, 2.0)
+
+                        if dt > 0:
+                            d_error = (error - self.depth_prev_error) / dt
+                        else:
+                            d_error = 0.0
+
+                        self.depth_prev_error = error
+
+                        correction = (
+                            DEPTH_P * error
+                            + DEPTH_I * self.depth_i
+                            + DEPTH_D * d_error
+                        )
+
+                        correction = np.clip(correction, -1.0, 1.0)
+
+                        powers[2] = correction
+
+                    else:
+                        powers[2] = 0.0
+                        self.depth_prev_error = error
+                
+            else:
+                # If we're manually controlling depth or missing sensor data, disable depth hold
                 if self.depth is not None:
                     self.last_depth = np.array(self.depth)
 
                 self.depth_i = 0.0
                 self.depth_prev_error = 0.0
                 self.depth_prev_time = None
-
-            elif depth_hold and self.last_depth is None:
-                self.last_depth = np.array(self.depth)
-                self.depth_i = 0.0
-                self.depth_prev_error = 0.0
-                self.depth_prev_time = None
-                powers = convert_force_and_torque_to_motor_powers(powers)
             
-            elif depth_hold and self.last_depth is not None:
-                # If not controlling depth, we hold depth using PID
-                now = time.time()
-
-                if self.depth_prev_time is None:
-                    self.depth_prev_time = now
-
-                dt = now - self.depth_prev_time
-                self.depth_prev_time = now
-
-                error = float(self.last_depth - self.depth)
-
-                self.depth_i += error * dt
-                self.depth_i = np.clip(self.depth_i, -2.0, 2.0)
-
-                if dt > 0:
-                    d_error = (error - self.depth_prev_error) / dt
-                else:
-                    d_error = 0.0
-
-                self.depth_prev_error = error
-
-                DEPTH_P = 0.5
-                DEPTH_I = 0.0
-                DEPTH_D = 0.1
-
-                correction = (
-                    DEPTH_P * error
-                    + DEPTH_I * self.depth_i
-                    + DEPTH_D * d_error
-                )
-
-                correction = np.clip(correction, -0.5, 0.5)
-
-                powers[2] += correction
-
-                powers = convert_force_and_torque_to_motor_powers(powers)
+            powers = convert_force_and_torque_to_motor_powers(powers)
 
         else:
             powers = np.transpose(np.array([powers], dtype=np.float32))
