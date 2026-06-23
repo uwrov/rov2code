@@ -1,23 +1,36 @@
 import busio
 import board
 import time
+import numpy as np
 from .rov_config import thruster_config
 from .rov_config import motor_config
 
 from gpiozero.pins.pigpio import PiGPIOFactory
 from gpiozero import Servo, Device
 Device.pin_factory = PiGPIOFactory()
-
+from onboard.physical.drivers.ms5837 import ms5837
+import adafruit_bno055
 
 class ROV:
     def __init__(self):
         self.servos = {}
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
-            self.bno = adafruit_bno055.BNO055_I2C(i2c, address=0x29)
         except Exception as e:
             print(e)
             print("UNABLE TO CONNECT TO IMU")
+
+
+        try:
+            self.bar02 = ms5837.MS5837_02BA()
+            if not self.bar02.init():
+                raise Exception()
+        except Exception as e:
+            print(e)
+            print("UNABLE TO CONNECT TO DEPTH SENSOR")
+            self.bar02 = None
+
+        
         self.pwms = {}
         self.gantry = {"x": 0.0, "y": 0.0}
         self.arm_angle = 0.0
@@ -34,40 +47,31 @@ class ROV:
 
     # unnecessary for physical ROV
     async def flush_pin_pwms(self):
-        pass
+        pass   
 
-    def get_quaternion(self) -> dict:
-        if self.bno is None:
-            return {}
-        
-        try:
-            quat = self.bno.quaternion
-            if quat[0] is None:
-                return {}
-
-            return {"quaternion": quat}
-        except:
-            return {}
-
-    def get_linear_acceleration(self) -> dict:
-        if self.bno is None:
+    def get_depth(self) -> dict:
+        if self.bar02 is None:
             return {}
 
         try:
-            accel = np.array(self.bno.linear_acceleration)
-        
-            if accel[0] is None:
-                return {}
-
-            return {"accelerometer": accel}
+            if self.bar02.read():
+                print(("Depth: %0.03f m P: %0.1f mbar  %0.3f psi\tT: %0.2f C  %0.2f F") % (
+                self.bar02.depth(), # saltwater depth
+                self.bar02.pressure(), # Default is mbar (no arguments)
+                self.bar02.pressure(ms5837.UNITS_psi), # Request psi
+                self.bar02.temperature(), # Default is degrees C (no arguments)
+                self.bar02.temperature(ms5837.UNITS_Farenheit))) # Request Farenheit
+                return {"depth": self.bar02.depth()}
+            return {}
         except:
             return {}
 
     async def poll_sensors(self) -> dict:
         readings = []
 
-        readings.append(self.get_quaternion())
-        readings.append(self.get_linear_acceleration())
+        readings.append(self.get_depth())
+        readings.append({"quaternion": [1.0, 0.0, 0.0]})
+        readings.append({"accelerometer": [0.0, 0.0, 0.0]})
 
         thrusters = {}
         motors = {}
