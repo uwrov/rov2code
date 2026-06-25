@@ -11,8 +11,10 @@ STOP_FLAG = _SCRIPT_DIR / ".egc_stop"
 #stream_url = "" 
 camera_id = 0  # Camera index (0 = default webcam, 1, 2, etc. for other cameras)
 
+image_source = _SCRIPT_DIR / "images"
 source = camera_id  # Change to camera_id for camera, stream_url for stream
 
+source = image_source
 conf_threshold = 0.9
 iou_threshold = 0.25 # NMS IoU threshold (lower = more aggressive suppression)
 egc_class_id = 0
@@ -28,8 +30,11 @@ if STOP_FLAG.exists():
     except OSError:
         pass
 
+output_dir = _SCRIPT_DIR / "annotated_images"
+output_dir.mkdir(exist_ok=True)
 # Main loop with tracking
-for result in model.track(source=source, stream=True, tracker="bytetrack.yaml", persist=True, verbose=False, iou=iou_threshold):
+# for result in model.track(source=source, stream=True, tracker="bytetrack.yaml", persist=True, verbose=False, iou=iou_threshold):
+for result in model.predict(source=source, stream=True, verbose=False, iou=iou_threshold):
     if STOP_FLAG.exists():
         print("EGC detector: stop requested from Godot.")
         try:
@@ -44,8 +49,8 @@ for result in model.track(source=source, stream=True, tracker="bytetrack.yaml", 
     for box in boxes:
         cls = int(box.cls[0])
         conf = float(box.conf[0])
-        track_id = int(box.id[0]) if box.id is not None else None
-
+        # track_id = int(box.id[0]) if box.id is not None else None
+        track_id = None
         if cls == egc_class_id and conf >= conf_threshold:
             current_crab_count += 1
 
@@ -89,9 +94,11 @@ for result in model.track(source=source, stream=True, tracker="bytetrack.yaml", 
         crab_thickness,
         cv2.LINE_AA,
     )
-    cv2.imshow("ROV EGC Detector", frame)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # cv2.imshow("ROV EGC Detector", frame)
+    out_path = output_dir / Path(result.path).name
+    cv2.imwrite(str(out_path), frame)
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(0) & 0xFF == ord('q'):
         print("Quitting...")
         break
 
