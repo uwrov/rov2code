@@ -51,12 +51,29 @@ async def serve(core: Core, interface: Interface):
         "", 8001
     )
     interface_server = await websockets.serve(interface.server_handler, "", 8002)
-    video_task = asyncio.create_task(interface.video_loop())
     await asyncio.gather(
+        rov_server.wait_closed(),
+        interface_server.wait_closed(),
+    )
+    try:
+        video_task = asyncio.create_task(interface.video_loop())
+    finally:
+        quit
+    try:
+        await asyncio.gather(
         rov_server.wait_closed(),
         interface_server.wait_closed(),
         video_task
     )
+    except Exception as e:
+        print(repr(e))
+        await asyncio.gather(
+            rov_server.wait_closed(),
+            interface_server.wait_closed(),
+        )
+    finally:
+        quit
+
 
 
 # handles incoming ("consumer") and outgoing ("producer") communication with ROV

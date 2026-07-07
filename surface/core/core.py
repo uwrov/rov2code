@@ -50,7 +50,11 @@ class Core():
         self.depth_prev_time = None
         
         try:
-            self.cam = cv2.VideoCapture("http://172.25.250.1:8556/")
+            self.cams = {
+                8554: cv2.VideoCapture("http://172.25.250.1:8554/"),
+                8555: cv2.VideoCapture("http://172.25.250.1:8555/"),
+                8556: cv2.VideoCapture("http://172.25.250.1:8556/")
+            }
         finally:
             pass
         self.img_counter = 0
@@ -75,24 +79,28 @@ class Core():
         rot = self.rotation
         # rot[1] *=2 #roll should be faster     
         powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]  
+        # print(powers)
         # print(self.capture_frame)
         # if self.capture_frame:            
         #         print("Space")
         try:
-            ret, frame = self.cam.read()
-        
+            frames = {}
+            for port, cam in self.cams.items():
+                ret, frame = cam.read()
+                if ret:
+                    frames[port] = frame
             if self.capture_frame:            
                 print("Space")
-                if ret:
-                    filename = "D:/frame_" + str(self.img_counter) + ".png"
+                for port, frame in frames.items():
+                    filename = f"D:/cam_{port}_frame_" + str(self.img_counter) + ".png"
                     print(os.getcwd())
-                    success = cv2.imwrite(filename, frame)
+                    success = cv2.imwrite(filename, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                     self.img_counter += 1
                     if success:
                         print("Yes")
                     else:
                         print("Couldnt save to thumb drive, saving to surface/analysis")
-                        filename = r"C:\Users\uwrov\Documents\GitHub\rov2code\surface\analysis\frame_" + str(self.img_counter) + ".png"
+                        filename = r"C:\Users\uwrov\Documents\GitHub\rov2code\surface\analysis\cam_{port}_frame_" + str(self.img_counter) + ".png"
                         cv2.imwrite(filename, frame)
                 else:
                     print("Failed to capture frame")
@@ -105,7 +113,7 @@ class Core():
         if not self.direct_motors:
             DEADBAND = 0.1
 
-            if self.depth_hold and self.depth is not None and abs(trans[2]) > DEADBAND:
+            if self.depth_hold and self.depth is not None and abs(trans[2]) <= DEADBAND:
                 if self.last_depth is None:
                     # First cycle of depth hold to initialize
                     self.last_depth = np.array(self.depth)
@@ -118,9 +126,10 @@ class Core():
                     # If not controlling depth, we hold depth using PID
                     
                     # These are currently arbitrary values (NEED TUNING!)
-                    DEPTH_P = 0.8
+                    # scaled by 100 since error is in meters
+                    DEPTH_P = 2000
                     DEPTH_I = 0.0
-                    DEPTH_D = 0.2
+                    DEPTH_D = 0
                     
                     now = time.time()
 
@@ -133,7 +142,7 @@ class Core():
                     error = np.array(self.depth) - self.last_depth
                     print ("Depth Error: ", error)
 
-                    if np.abs(error) > 0.05:
+                    if np.abs(error) > 0.01:
                         self.depth_i += error * dt
                         self.depth_i = np.clip(self.depth_i, -2.0, 2.0)
 
@@ -150,7 +159,7 @@ class Core():
                             + DEPTH_D * d_error
                         )
 
-                        correction = np.clip(correction, -1.0, 1.0)
+                        correction = np.clip(correction, -1.0, 1.0)*-1500
 
                         powers[2] = correction
 

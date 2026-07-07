@@ -14,7 +14,7 @@ sources = [
             "http://172.25.250.1:8555/",
             "http://172.25.250.1:8556/",
         ]
-window_names = ["Birdseye", "Rear", "Front"]
+window_names = ["Birdseye", "Bottom", "Front"]
 positions = [
     (900, 0),
     (900, 400),
@@ -25,7 +25,9 @@ sizes = [
     (630, 540),
     (900, 700)
 ]
-orientations = [0, 270,0]
+orientations = [0, 270,0] #update as needed
+# crops = [None,None, None] #{"x":200,"y":200, "w":630, "h" : 630}
+
 class LatestFrameCapture:
     def __init__(self, source):
         self.source = source
@@ -112,10 +114,12 @@ class Interface():
                 'arm_angle' : self.core.arm_angle
             }))
     def update_video_streams(self):
-        for capture, window_name, orientation in zip(self.captures, window_names, orientations):
+        for capture, window_name, orientation in zip(self.captures, window_names, orientations, crops):
             frame = capture.get()
 
             if frame is not None:
+                # if crop is not None:
+                    # frame = frame[crop["x"]:crop["x"]+crop["w"],crop["y"]:crop["y"]+crop["h"]]
                 if orientation == 0:
                     cv2.imshow(window_name, frame)
                 elif orientation == 90:

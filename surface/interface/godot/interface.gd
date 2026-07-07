@@ -18,6 +18,7 @@ var mode_index = 1
 var mode_names = {
 	1: "fast",
 	2: "slow",
+	3: "yaw"
 }
 var totalModes = mode_names.size()
 
@@ -182,7 +183,6 @@ func _process(delta):
 	
 #	time += delta
 	_client.poll()
-	
 	var holding_increase := Input.is_action_pressed("dpad_up")
 	var holding_decrease := Input.is_action_pressed("dpad_down")
 	var next_mode := Input.is_action_pressed("dpad_right")
@@ -345,9 +345,11 @@ func _process(delta):
 			manipulator_pwm += 75
 	elif mode_index == 3:
 		if Input.is_action_pressed("button_b"):
-			print("foo")
+			#yaw right
+			rotation.z = -.2
 		if Input.is_action_pressed("button_x"):
-			print("bar")
+			#yaw left
+			rotation.z = .2
 	if Input.is_action_pressed("Capture_frame"):
 		captureFrame = true
 		print(captureFrame)
@@ -400,7 +402,7 @@ func _process(delta):
 	$ServoCurrentPWMLabel.text = str("%0.1f" %manipulator_pwm)
 	
 	$InputLabel.text = str(translation)
-	
+	print(rotation)
 	if ready:
 		var data = {
 			"type": "control_input",

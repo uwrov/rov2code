@@ -87,7 +87,7 @@ thruster_config = [
         'name': 'left_up',
         'location': [-0.153494, -0.118504, 0.077573],
         'orientation': [0.0, 0.0, 1.0],
-        'pin': 13, #11 before
+        'pin': 13,
         'model': 't-200',
         'direction': 1,
         'handing' : -1,
@@ -109,7 +109,7 @@ thruster_config = [
         'name': 'left_back',
         'location': [-0.153494, -0.021175, 0.000105],
         'orientation': [0.0, -1.0, 0.0],
-        'pin': 19, #20
+        'pin': 19,
         'model': 't-200',
         'direction': -1,
         'handing' : -1,
@@ -142,7 +142,7 @@ motor_config = [
         'name': 'gantry_right',
         # 'location': [0.0, 0.0, 0.0],
         # 'orientation': [0.0, 1.0, 0.0],
-        'pin': 11, #9 before
+        'pin': 11,
         'model': 'm_200',
         'direction': 1,
         'slot' : 5,
