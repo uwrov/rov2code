@@ -1,23 +1,18 @@
 import random
 import numpy as np
-import pickle
 from .rov_config import thruster_config as THRUSTER_CFG
 from .rov_config import motor_config as MOTOR_CFG
-from .accel_gyro_values import manipulate_gyro_accel
 
 from .motor_power_translator import convert_force_and_torque_to_motor_powers
 from .force_to_pwm import convert_motor_powers_to_pwms
-from .logger import ROVLogger
 from .rov_config import imu_position as IMU_POS
 
 import time
-import math
 
 import os
 
 import cv2
 
-logger = ROVLogger()
 TIME_TO_RAMP = 1.0
 TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
@@ -271,20 +266,3 @@ class Core():
         for key, value in packet.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-
-def quaternion_to_euler(q):
-    w, x, y, z = q
-    sinr_cosp = 2 * (w * x + y * z)
-    cosr_cosp = 1 - 2 * (x * x + y * y)
-    roll = math.atan2(sinr_cosp, cosr_cosp)
-
-    sinp = 2 * (w * y - z * x)
-    if abs(sinp) >= 1:
-        pitch = math.copysign(math.pi / 2, sinp)  # use 90° if out of range
-    else:
-        pitch = math.asin(sinp)
-    siny_cosp = 2 * (w * z + x * y)
-    cosy_cosp = 1 - 2 * (y * y + z * z)
-    yaw = math.atan2(siny_cosp, cosy_cosp)
-
-    return (roll, pitch, yaw)
