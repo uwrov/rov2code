@@ -91,6 +91,6 @@ class ROV(ROVBase):
     async def poll_sensors(self) -> dict:
         return {
             # the depth read sleeps for about 41 ms, so keep it off the event loop handling commands
-            **await asyncio.to_thread(self.read_sensors),
+            **await asyncio.get_running_loop().run_in_executor(None, self.read_sensors),
             **self.actuator_readings(),
         }
