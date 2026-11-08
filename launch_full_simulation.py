@@ -18,5 +18,5 @@ else:  # windows
     onboard_proc = subprocess.Popen(
         ['python.exe', 'onboard.py'], cwd=onboard_cwd, shell=True)
 
-while True:
-    pass
+surface_proc.wait()
+onboard_proc.wait()

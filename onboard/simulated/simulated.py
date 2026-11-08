@@ -16,12 +16,12 @@ class ROV(ROVBase):
 
     async def poll_sensors(self):
         accelerometer = [0.0, 0.0, round(-9.81 + random.randint(-5, 5) * 0.01, 2)]
-        gyroscope = [0.0, 0.0, 0.0]
+        quaternion = [1.0, 0.0, 0.0, 0.0]  # level, in the IMU's w, x, y, z order
 
         # TODO implement retrieving from simulation
         # kinda being done
         return {
-            "quaternion": gyroscope,       # match Godot expectation
+            "quaternion": quaternion,      # match Godot expectation
             "accelerometer": accelerometer,
             **self.actuator_readings(),
         }
