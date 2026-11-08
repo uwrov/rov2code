@@ -13,28 +13,41 @@ import os
 
 import cv2
 
+NEUTRAL_PWM = 1500
 TIME_TO_RAMP = 1.0
 TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
+
+CAMERA_PORTS = (8554, 8555, 8556)
+
+# Godot's direct-motor keys, in order: thrusters first, then auxiliary motors
+OVERRIDE_PINS = {
+    f"motor_{letter}": cfg['pin']
+    for letter, cfg in zip("abcdefghij", (*THRUSTER_CFG, *MOTOR_CFG))
+}
+
+SENSOR_FIELDS = (
+    "angular_acceleration", "accelerometer", "thrusters", "gantry", "motors",
+    "quaternion", "rotational_velocity", "depth", "gravity_vector", "arm_angle",
+)
 
 class Core():
     def __init__(self):
         self.interface, self.task = None, None
 
         self.translate_x = 0.0
-        self.translation = [0.0, 0.0, 0.0]
-        self.rotation = [0.0, 0.0, 0.0]
-        self.override = [1500,1500,1500,1500,1500,1500,1500,1500,1500,1500]
+        self.translation = [0.0] * 3
+        self.rotation = [0.0] * 3
+        self.override = dict.fromkeys(OVERRIDE_PINS, NEUTRAL_PWM)
         self.direct_motors = False
         self.power_scale = 0.5
-        self.manipulator_pwm = 1500
-        self.right_gantry = 1500
-        self.left_gantry = 1500
-        self.buoyancy_arm = 1500
+        self.manipulator_pwm = self.right_gantry = self.left_gantry = self.buoyancy_arm = NEUTRAL_PWM
         self.capture_frame = False
 
-        self.angular_acceleration, self.accelerometer, self.thrusters, self.gantry,self.motors, self.quaternion, self.rotational_velocity, self.depth, self.gravity_vector, self.arm_angle =None, None,None,None, None, None, None, None, None, None
+        # update_sensors only sets attributes that already exist
+        for name in SENSOR_FIELDS:
+            setattr(self, name, None)
         self.rotational_velocity_accum = np.zeros(3)
         self.last_rotational_velocity = None
         self.last_depth = None
@@ -44,17 +57,10 @@ class Core():
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
         
-        try:
-            self.cams = {
-                8554: cv2.VideoCapture("http://172.25.250.1:8554/"),
-                8555: cv2.VideoCapture("http://172.25.250.1:8555/"),
-                8556: cv2.VideoCapture("http://172.25.250.1:8556/")
-            }
-        finally:
-            pass
+        self.cams = {port: cv2.VideoCapture(f"http://172.25.250.1:{port}/") for port in CAMERA_PORTS}
         self.img_counter = 0
 
-        self.prev_pwms = [1500, 1500, 1500, 1500, 1500, 1500]
+        self.prev_pwms = [NEUTRAL_PWM] * len(THRUSTER_CFG)
 
     def set_interface(self, interface: 'Interface'):
         self.interface = interface
@@ -73,7 +79,7 @@ class Core():
         # trans[0] *=3 #Strafe should be faster
         rot = self.rotation
         # rot[1] *=2 #roll should be faster     
-        powers = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]  
+        powers = [*trans, *rot]  
         # print(powers)
         # print(self.capture_frame)
         # if self.capture_frame:            
@@ -194,7 +200,7 @@ class Core():
         pin_pwms += [
             {
                 'number': MOTOR_CFG[0]['pin'], #arm
-                'value': 1500 + int(rot[0] * 100)
+                'value': NEUTRAL_PWM + int(rot[0] * 100)
             },
             {
                 'number': MOTOR_CFG[1]['pin'],
@@ -212,54 +218,16 @@ class Core():
         
         if self.direct_motors : 
             pin_pwms = [
-                {
-                    'number': THRUSTER_CFG[0]['pin'],
-                    'value': self.override["motor_a"]
-                },
-                {
-                    'number': THRUSTER_CFG[1]['pin'],
-                    'value': self.override["motor_b"]
-                },
-                {
-                    'number': THRUSTER_CFG[2]['pin'],
-                    'value': self.override["motor_c"]
-                },
-                {
-                    'number': THRUSTER_CFG[3]['pin'],
-                    'value': self.override["motor_d"]
-                },
-                {
-                    'number': THRUSTER_CFG[4]['pin'],
-                    'value': self.override["motor_e"]
-                },
-                {
-                    'number': THRUSTER_CFG[5]['pin'],
-                    'value': self.override["motor_f"]
-                },
-                {
-                    'number': MOTOR_CFG[0]['pin'],
-                    'value': self.override["motor_g"]
-                },
-                {
-                    'number': MOTOR_CFG[1]['pin'],
-                    'value': self.override["motor_h"]
-                },
-                {
-                    'number': MOTOR_CFG[2]['pin'],
-                    'value': self.override["motor_i"]
-                },
-                {
-                    'number': MOTOR_CFG[3]['pin'],
-                    'value': self.override["motor_j"]
-                }
+                {'number': pin, 'value': self.override[key]}
+                for key, pin in OVERRIDE_PINS.items()
             ]   
         
         pwm_sum=0
         for p in pin_pwms:
-            pwm_sum += abs(1500 - p['value'])
+            pwm_sum += abs(NEUTRAL_PWM - p['value'])
         if pwm_sum > 3400 :
             for i in range(len(pin_pwms)):
-                pin_pwms[i]['value'] = 1500 + (pin_pwms[i]['value'] - 1500) * 1200 / pwm_sum
+                pin_pwms[i]['value'] = NEUTRAL_PWM + (pin_pwms[i]['value'] - NEUTRAL_PWM) * 1200 / pwm_sum
         return pin_pwms
 
     async def consume_interface_websocket(self, packet):
