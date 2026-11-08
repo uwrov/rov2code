@@ -33,10 +33,6 @@ class ROV(ROVBase):
         self.servos[number].value = max(min(normalized, 1), -1)
         self.pwms[number] = value
 
-    # unnecessary for physical ROV
-    async def flush_pin_pwms(self):
-        pass
-
     def get_depth(self) -> dict:
         if self.bar02 is None:
             return {}

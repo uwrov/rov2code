@@ -4,21 +4,11 @@ import os
 
 SURFACE_STATION_IP_ADDRESS = '192.168.0.69'
 
-if os.name == 'posix':  # mac, linux, etc.
-    # surface_cwd = (pathlib.Path(__file__).parent / 'surface').resolve()
-    # surface_proc = subprocess.Popen(['python3', 'surface.py'], cwd=surface_cwd)
+is_posix = os.name == 'posix'  # mac, linux, etc.
+python = 'python3' if is_posix else 'python.exe'
 
-    onboard_cwd = (pathlib.Path(__file__).parent / 'onboard').resolve()
-    onboard_proc = subprocess.Popen(['python3', 'onboard.py',
-                                     '--websocket', f'{SURFACE_STATION_IP_ADDRESS}:8001'], cwd=onboard_cwd)
-else:  # windows
-    # surface_cwd = (pathlib.Path(__file__).parent / 'surface').resolve()
-    # surface_proc = subprocess.Popen(
-    #     ['python.exe', 'surface.py'], cwd=surface_cwd, shell=True)
+onboard_cwd = (pathlib.Path(__file__).parent / 'onboard').resolve()
+onboard_proc = subprocess.Popen([python, 'onboard.py',
+                                 '--websocket', f'{SURFACE_STATION_IP_ADDRESS}:8001'], cwd=onboard_cwd, shell=not is_posix)
 
-    onboard_cwd = (pathlib.Path(__file__).parent / 'onboard').resolve()
-    onboard_proc = subprocess.Popen(['python.exe', 'onboard.py',
-                                     '--websocket', f'{SURFACE_STATION_IP_ADDRESS}:8001'], cwd=onboard_cwd, shell=True)
-
-while True:
-    pass
+onboard_proc.wait()

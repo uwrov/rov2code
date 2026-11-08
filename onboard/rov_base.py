@@ -18,10 +18,20 @@ class ROVBase:
         self.gantry = {"x": 0.0, "y": 0.0}
         self.arm_angle = 0.0
 
-    # sets every output that has been used back to neutral
-    def stop_all(self):
+    def stop_all(self) -> bool:
+        failures = {}
         for number in self.pwms:
-            self.set_pin_pwm(number, 1500)
+            try:
+                self.set_pin_pwm(number, 1500)
+            except Exception as e:
+                failures[number] = e
+
+        if failures:
+            print(f'FAILED TO STOP PINS: {failures!r}')
+        return not failures
+
+    async def flush_pin_pwms(self):
+        pass
 
     def actuator_readings(self) -> dict:
         thrusters = {
