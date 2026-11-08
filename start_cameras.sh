@@ -21,6 +21,7 @@ cleanup() {
     cd recordings
     ffmpeg -f mjpeg -i front_$current_datetime.mjpeg -c:v libx264 -crf 23 -preset fast -c:a aac -strict -2 front_$current_datetime.mp4
     ffmpeg -f mjpeg -i down_$current_datetime.mjpeg -c:v libx264 -crf 23 -preset fast -c:a aac -strict -2 down_$current_datetime.mp4
+    ffmpeg -f mjpeg -i rear_$current_datetime.mjpeg -c:v libx264 -crf 23 -preset fast -c:a aac -strict -2 rear_$current_datetime.mp4
   fi
 
   exit 0
@@ -38,11 +39,16 @@ pids+=($!)
 v4l2-ctl -d 0 -v width=1024,height=768,pixelformat='MJPG' --stream-mmap --stream-to - | raspivid_mjpeg_server -p 8555 &
 pids+=($!)
 
+v4l2-ctl -d 6 -v width=1024,height=768,pixelformat='MJPG' --stream-mmap --stream-to - | raspivid_mjpeg_server -p 8556 &
+pids+=($!)
+
 if [ "$RECORD" = true ]; then
   current_datetime=$(date +"%Y%m%d_%H%M%S")
   curl http://localhost:8554/ > recordings/front_$current_datetime.mjpeg &
   pids+=($!)
   curl http://localhost:8555/ > recordings/down_$current_datetime.mjpeg &
+  pids+=($!)
+  curl http://localhost:8556/ > recordings/rear_$current_datetime.mjpeg &
   pids+=($!)
 fi
 
