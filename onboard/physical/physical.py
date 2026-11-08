@@ -1,58 +1,41 @@
-import busio
-import board
-import time
-import numpy as np
-from .rov_config import thruster_config
-from .rov_config import motor_config
+import asyncio
 
 from gpiozero.pins.pigpio import PiGPIOFactory
 from gpiozero import Servo, Device
 Device.pin_factory = PiGPIOFactory()
-from onboard.physical.drivers.ms5837 import ms5837
-import adafruit_bno055
+from physical.drivers.ms5837 import ms5837
+from rov_base import ROVBase
 
-class ROV:
+class ROV(ROVBase):
     def __init__(self):
+        super().__init__()
         self.servos = {}
+        self.bar02 = self.connect_depth_sensor()
+
+    def connect_depth_sensor(self):
         try:
-            i2c = busio.I2C(board.SCL, board.SDA)
+            sensor = ms5837.MS5837_02BA()
+            if sensor.init():
+                return sensor
         except Exception as e:
             print(e)
-            print("UNABLE TO CONNECT TO IMU")
 
-
-        try:
-            self.bar02 = ms5837.MS5837_02BA()
-            if not self.bar02.init():
-                raise Exception()
-        except Exception as e:
-            print(e)
-            print("UNABLE TO CONNECT TO DEPTH SENSOR")
-            self.bar02 = None
-
-        
-        self.pwms = {}
-        self.gantry = {"x": 0.0, "y": 0.0}
-        self.arm_angle = 0.0
+        print("UNABLE TO CONNECT TO DEPTH SENSOR")
+        return None
 
     # number = GPIO number
     # value = PWM value
-    def set_pin_pwm(self, number: int, value: int): 
-        # print(number, value)
+    def set_pin_pwm(self, number: int, value: int):
         if number not in self.servos:
             self.servos[number] = Servo(number)
 
         normalized = (value - 1500) / 500
         self.servos[number].value = max(min(normalized, 1), -1)
-
-    # sets every output that has been used back to neutral
-    def stop_all(self):
-        for number in self.servos:
-            self.set_pin_pwm(number, 1500)
+        self.pwms[number] = value
 
     # unnecessary for physical ROV
     async def flush_pin_pwms(self):
-        pass   
+        pass
 
     def get_depth(self) -> dict:
         if self.bar02 is None:
@@ -60,67 +43,18 @@ class ROV:
 
         try:
             if self.bar02.read():
-                print(("Depth: %0.03f m P: %0.1f mbar  %0.3f psi\tT: %0.2f C  %0.2f F") % (
-                self.bar02.depth(), # saltwater depth
-                self.bar02.pressure(), # Default is mbar (no arguments)
-                self.bar02.pressure(ms5837.UNITS_psi), # Request psi
-                self.bar02.temperature(), # Default is degrees C (no arguments)
-                self.bar02.temperature(ms5837.UNITS_Farenheit))) # Request Farenheit
                 return {"depth": self.bar02.depth()}
-            return {}
-        except:
-            return {}
+        except Exception as e:
+            print(f'depth read failed: {e!r}')
+
+        return {}
 
     async def poll_sensors(self) -> dict:
-        readings = []
-
-        readings.append(self.get_depth())
-        readings.append({"quaternion": [1.0, 0.0, 0.0]})
-        readings.append({"accelerometer": [0.0, 0.0, 0.0]})
-
-        thrusters = {}
-        motors = {}
-        print(self.pwms)
-        
-        for t in thruster_config:
-            pin = t["pin"]
-            name = t["name"]
-            pwm = self.pwms.get(pin, 1500)
-
-            thrust = (pwm - 1500)
-
-            thrust *= t.get("direction", 1)
-            thrust *= t.get("handing", 1)
-
-            thrusters[name] = thrust
-            
-        for m in motor_config:
-            pin = m["pin"]
-            name = m["name"]
-            pwm = self.pwms.get(pin, 1500)
-
-            motor_value = (pwm - 1500)
-
-            motor_value *= m.get("direction", 1)
-            
-            motors[name] = motor_value
-        
-        # TODO time-based translation instead of super small scalar to avoid framerate dependency
-        self.gantry["x"] += (motors["gantry_left"] - motors["gantry_right"])/2 * 0.0003
-        self.gantry["y"] += (motors["gantry_left"] + motors["gantry_right"])/2 * 0.0001
-        self.gantry["x"] = max(-0.77, min(self.gantry["x"], 0.77))
-        self.gantry["y"] = max(-0.17, min(self.gantry["y"], 0.17))
-        self.arm_angle = (self.arm_angle + motors["buoyancy_arm"] * 0.04 )% 360
-        # TODO implement retrieving from simulation
-        # kinda being done
-        
-        readings.append({"thrusters": thrusters})
-        readings.append({"motors": motors})
-        readings.append({"gantry": self.gantry})
-        readings.append({"arm_angle": self.arm_angle})
-        
-        readings_dict = {}
-        for reading in readings:
-            readings_dict.update(reading)
-
-        return readings_dict
+        return {
+            # the read sleeps for about 41 ms, so keep it off the event loop handling commands
+            **await asyncio.to_thread(self.get_depth),
+            # TODO placeholders since the IMU was removed
+            "quaternion": [1.0, 0.0, 0.0],
+            "accelerometer": [0.0, 0.0, 0.0],
+            **self.actuator_readings(),
+        }

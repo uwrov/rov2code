@@ -1,21 +1,12 @@
 import random
-import sys
-import os
 
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../surface/core")
-))
-
-from rov_config import thruster_config
-from rov_config import motor_config
+from rov_base import ROVBase
 
 PIN_HACK = 1500
-class ROV:
+class ROV(ROVBase):
     def __init__(self):
+        super().__init__()
         print('initializing simulated ROV')
-        self.pwms = {}
-        self.gantry = {"x": 0.0, "y": 0.0}
-        self.arm_angle = 0.0
         # TODO start Godot simulation and ensure cameras are connected
 
 
@@ -28,10 +19,6 @@ class ROV:
         # TODO: implement
 
 
-    def stop_all(self):
-        for number in self.pwms:
-            self.set_pin_pwm(number, 1500)
-
     async def flush_pin_pwms(self):
         print()  # add separation in terminal between groups of PWM setting
         pass
@@ -41,43 +28,11 @@ class ROV:
     async def poll_sensors(self):
         accelerometer = [(1500-PIN_HACK) * 0.01, 0.0, round(-9.81 + random.randint(-5, 5) * 0.01, 2)]
         gyroscope = [0.0, 0.0, 0.0]
-        thrusters = {}
-        motors = {}
-        for t in thruster_config:
-            pin = t["pin"]
-            name = t["name"]
-            pwm = self.pwms.get(pin, 1500)
 
-            thrust = (pwm - 1500)
-
-            thrust *= t.get("direction", 1)
-            thrust *= t.get("handing", 1)
-
-            thrusters[name] = thrust
-        for m in motor_config:
-            pin = m["pin"]
-            name = m["name"]
-            pwm = self.pwms.get(pin, 1500)
-
-            motor_value = (pwm - 1500)
-
-            motor_value *= m.get("direction", 1)
-
-            motors[name] = motor_value
-        #TODO time-based translation instead of super small scalar to avoid framerate dependency
-        self.gantry["x"] += (motors["gantry_left"] - motors["gantry_right"])/2 * 0.0003
-        self.gantry["y"] += (motors["gantry_left"] + motors["gantry_right"])/2 * 0.0001
-        self.gantry["x"] = max(-0.77, min(self.gantry["x"], 0.77))
-        self.gantry["y"] = max(-0.17, min(self.gantry["y"], 0.17))
-        self.arm_angle = (self.arm_angle + motors["buoyancy_arm"] * 0.04 )% 360
-        
         # TODO implement retrieving from simulation
         # kinda being done
         return {
             "quaternion": gyroscope,       # match Godot expectation
             "accelerometer": accelerometer,
-            "thrusters": thrusters,
-            "motors": motors,
-            "gantry" : self.gantry,
-            "arm_angle" : self.arm_angle
+            **self.actuator_readings(),
         }
