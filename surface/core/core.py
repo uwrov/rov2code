@@ -120,9 +120,8 @@ class Core():
                     self.depth_i = 0.0
                     self.depth_prev_error = 0.0
                     self.depth_prev_time = None
-                    powers = convert_force_and_torque_to_motor_powers(powers)
 
-                else:  
+                else:
                     # If not controlling depth, we hold depth using PID
                     
                     # These are currently arbitrary values (NEED TUNING!)
@@ -179,7 +178,7 @@ class Core():
             powers = convert_force_and_torque_to_motor_powers(powers)
 
         else:
-            powers = np.transpose(np.array([powers], dtype=np.float32))
+            powers = np.array(powers, dtype=np.float32)
 
         for i in range(len(powers)):
             powers[i] = powers[i] * self.power_scale
