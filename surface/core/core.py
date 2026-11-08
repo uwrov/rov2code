@@ -5,7 +5,6 @@ from .rov_config import motor_config as MOTOR_CFG
 
 from .motor_power_translator import convert_force_and_torque_to_motor_powers
 from .force_to_pwm import convert_motor_powers_to_pwms
-from .rov_config import imu_position as IMU_POS
 
 import time
 
