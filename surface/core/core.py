@@ -33,6 +33,15 @@ SENSOR_FIELDS = (
     "quaternion", "rotational_velocity", "depth", "gravity_vector", "arm_angle",
 )
 
+def vertical_axis(gravity_vector) -> np.ndarray:
+    body_z = np.array([0.0, 0.0, 1.0])
+    if gravity_vector is None:
+        return body_z
+
+    gravity = np.array(gravity_vector, dtype=float)
+    norm = np.linalg.norm(gravity)
+    return gravity / norm if norm > 0.1 else body_z
+
 class Core():
     def __init__(self):
         self.interface = None
@@ -167,7 +176,8 @@ class Core():
 
                         correction = np.clip(correction, -1.0, 1.0)*-1500
 
-                        powers[2] = correction
+                        powers[2] = 0.0
+                        powers[:3] = (np.array(powers[:3]) + correction * vertical_axis(self.gravity_vector)).tolist()
 
                     else:
                         powers[2] = 0.0
