@@ -1,38 +1,37 @@
 import pathlib
 import subprocess
-import websockets
 import asyncio
 import json
 import cv2
 import threading
 import time
+from typing import NamedTuple
 
-# import numpy as np
+class Camera(NamedTuple):
+    port: int
+    window: str
+    position: tuple
+    size: tuple
+    rotation: int  # degrees clockwise: 0, 90, 180 or 270
 
-sources = [
-            "http://172.25.250.1:8554/",
-            "http://172.25.250.1:8555/",
-            "http://172.25.250.1:8556/",
-        ]
-window_names = ["Birdseye", "Bottom", "Front"]
-positions = [
-    (900, 0),
-    (900, 400),
-    (0, 160)
+CAMERAS = [  # update rotation as needed
+    Camera(8554, "Birdseye", (900, 0),   (630, 400), 0),
+    Camera(8555, "Bottom",   (900, 400), (630, 540), 270),
+    Camera(8556, "Front",    (0, 160),   (900, 700), 0),
 ]
-sizes = [
-    (630, 400),
-    (630, 540),
-    (900, 700)
-]
-orientations = [0, 270,0] #update as needed
-# crops = [None,None, None] #{"x":200,"y":200, "w":630, "h" : 630}
+
+ROTATIONS = {
+    90: cv2.ROTATE_90_CLOCKWISE,
+    180: cv2.ROTATE_180,
+    270: cv2.ROTATE_90_COUNTERCLOCKWISE,
+}
+
+SENSOR_UPDATE_FIELDS = ('accelerometer', 'quaternion', 'thrusters', 'motors', 'gantry', 'arm_angle')
 
 class LatestFrameCapture:
     def __init__(self, source):
         self.source = source
         self.frame = None
-        self.running = True
         self.lock = threading.Lock()
         self.cap = None
 
@@ -44,7 +43,7 @@ class LatestFrameCapture:
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     def _capture_loop(self):
-        while self.running:
+        while True:
             if self.cap is None or not self.cap.isOpened():
                 self._open()
 
@@ -66,70 +65,43 @@ class LatestFrameCapture:
         with self.lock:
             return self.frame
 
-    def close(self):
-        self.running = False
-
-        if self.cap is not None:
-            self.cap.release()
-
 class Interface():
     def __init__(self, _core: 'Core'):
         self.core = _core
-        self.task = None
         self.websocket = None
-        for name, position, size, orientation in zip(window_names, positions, sizes, orientations):
-            cv2.namedWindow(name, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
-            cv2.moveWindow(name, *position)
-            cv2.resizeWindow(name, *size)
+        for camera in CAMERAS:
+            cv2.namedWindow(camera.window, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
+            cv2.moveWindow(camera.window, *camera.position)
+            cv2.resizeWindow(camera.window, *camera.size)
 
-        self.captures = [LatestFrameCapture(source) for source in sources]
+        self.captures = [LatestFrameCapture(f"http://172.25.250.1:{camera.port}/") for camera in CAMERAS]
         uri = 'ws://localhost:8002'
         cwd = (pathlib.Path(__file__).parent / 'godot').resolve()
-        if False:
-            subprocess.Popen(['godot', 'interface.tscn', '-u', uri], cwd=cwd)
-        else:
-            subprocess.Popen(['godot', 'interface.tscn', '-u', uri], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    def set_task(self, task: 'Task'):
-        self.task = task
-
-    def notify_new_sensor_data(self):
-        print(f'accelerometer: {self.core.accelerometer}, gyro: {self.core.gyroscope}, thrusters: {self.core.thrusters}, motors: {self.core.motors}')
+        subprocess.Popen(['godot', 'interface.tscn', '-u', uri], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     async def server_handler(self, _websocket):
         self.websocket = _websocket
         async for message in self.websocket:
-            data = json.loads(str(message)[2:-1])
-            result = json.dumps(data)
+            data = json.loads(message)
             await self.core.consume_interface_websocket(data)
 
     async def notify_sensor_update(self):
-        if self.websocket != None:
+        if self.websocket is not None:
             await self.websocket.send(json.dumps({
-                'accelerometer': self.core.accelerometer,
-                'quaternion': self.core.quaternion,
-                'thrusters': self.core.thrusters,
-                'motors': self.core.motors,
-                'gantry' : self.core.gantry,
-                'arm_angle' : self.core.arm_angle
+                name: getattr(self.core, name) for name in SENSOR_UPDATE_FIELDS
             }))
+
     def update_video_streams(self):
-        for capture, window_name, orientation in zip(self.captures, window_names, orientations, crops):
+        for capture, camera in zip(self.captures, CAMERAS):
             frame = capture.get()
 
             if frame is not None:
-                # if crop is not None:
-                    # frame = frame[crop["x"]:crop["x"]+crop["w"],crop["y"]:crop["y"]+crop["h"]]
-                if orientation == 0:
-                    cv2.imshow(window_name, frame)
-                elif orientation == 90:
-                    cv2.imshow(window_name, cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE))
-                elif orientation == 270:
-                    cv2.imshow(window_name, cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE))
-                else:
-                    cv2.imshow(window_name, cv2.rotate(frame, cv2.ROTATE_180))
+                if camera.rotation:
+                    frame = cv2.rotate(frame, ROTATIONS[camera.rotation])
+                cv2.imshow(camera.window, frame)
 
         cv2.waitKey(1)
+
     async def video_loop(self):
         while True:
             self.update_video_streams()

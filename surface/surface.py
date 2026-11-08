@@ -19,7 +19,6 @@ def main():
 
     task = Task(core, interface)
     core.set_task(task)
-    interface.set_task(task)
 
     print('serving')
     try:
@@ -51,10 +50,6 @@ async def serve(core: Core, interface: Interface):
         "", 8001
     )
     interface_server = await websockets.serve(interface.server_handler, "", 8002)
-    await asyncio.gather(
-        rov_server.wait_closed(),
-        interface_server.wait_closed(),
-    )
     try:
         video_task = asyncio.create_task(interface.video_loop())
     finally:
