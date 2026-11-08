@@ -81,9 +81,15 @@ class Interface():
 
     async def server_handler(self, _websocket):
         self.websocket = _websocket
-        async for message in self.websocket:
-            data = json.loads(message)
-            await self.core.consume_interface_websocket(data)
+        try:
+            async for message in _websocket:
+                data = json.loads(message)
+                await self.core.consume_interface_websocket(data)
+        finally:
+            # a newer Godot connection may have already replaced this one
+            if self.websocket is _websocket:
+                self.websocket = None
+                self.core.set_controls_neutral()
 
     async def notify_sensor_update(self):
         if self.websocket is not None:

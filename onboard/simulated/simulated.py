@@ -28,6 +28,10 @@ class ROV:
         # TODO: implement
 
 
+    def stop_all(self):
+        for number in self.pwms:
+            self.set_pin_pwm(number, 1500)
+
     async def flush_pin_pwms(self):
         print()  # add separation in terminal between groups of PWM setting
         pass

@@ -18,6 +18,8 @@ TIME_PER_CYCLE = 0.1 # dont change
 AMPLITUDE = 400
 RAMP_LIMIT = (TIME_PER_CYCLE / TIME_TO_RAMP) * AMPLITUDE
 
+CONTROL_TIMEOUT = 1.0  # seconds without Godot input before controls go neutral
+
 CAMERA_PORTS = (8554, 8555, 8556)
 
 # Godot's direct-motor keys, in order: thrusters first, then auxiliary motors
@@ -33,16 +35,11 @@ SENSOR_FIELDS = (
 
 class Core():
     def __init__(self):
-        self.interface, self.task = None, None
+        self.interface = None
 
         self.translate_x = 0.0
-        self.translation = [0.0] * 3
-        self.rotation = [0.0] * 3
-        self.override = dict.fromkeys(OVERRIDE_PINS, NEUTRAL_PWM)
-        self.direct_motors = False
         self.power_scale = 0.5
-        self.manipulator_pwm = self.right_gantry = self.left_gantry = self.buoyancy_arm = NEUTRAL_PWM
-        self.capture_frame = False
+        self.set_controls_neutral()
 
         # update_sensors only sets attributes that already exist
         for name in SENSOR_FIELDS:
@@ -51,7 +48,6 @@ class Core():
         self.last_rotational_velocity = None
         self.last_depth = None
 
-        self.depth_hold = False
         self.depth_i = 0.0
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
@@ -64,8 +60,15 @@ class Core():
     def set_interface(self, interface: 'Interface'):
         self.interface = interface
 
-    def set_task(self, task: 'Task'):
-        self.task = task
+    def set_controls_neutral(self):
+        self.translation = [0.0] * 3
+        self.rotation = [0.0] * 3
+        self.override = dict.fromkeys(OVERRIDE_PINS, NEUTRAL_PWM)
+        self.direct_motors = False
+        self.depth_hold = False
+        self.manipulator_pwm = self.right_gantry = self.left_gantry = self.buoyancy_arm = NEUTRAL_PWM
+        self.capture_frame = False
+        self.last_control_time = None
 
     async def update_sensors(self, packet):
         for key, value in packet.items():
@@ -74,6 +77,10 @@ class Core():
         await self.interface.notify_sensor_update()
 
     async def update_controls(self):
+        if self.last_control_time is not None and time.monotonic() - self.last_control_time > CONTROL_TIMEOUT:
+            print('Godot input timed out, setting controls to neutral')
+            self.set_controls_neutral()
+
         trans = self.translation
         # trans[0] *=3 #Strafe should be faster
         rot = self.rotation
@@ -232,3 +239,4 @@ class Core():
         for key, value in packet.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+        self.last_control_time = time.monotonic()

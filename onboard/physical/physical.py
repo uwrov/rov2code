@@ -45,6 +45,11 @@ class ROV:
         normalized = (value - 1500) / 500
         self.servos[number].value = max(min(normalized, 1), -1)
 
+    # sets every output that has been used back to neutral
+    def stop_all(self):
+        for number in self.servos:
+            self.set_pin_pwm(number, 1500)
+
     # unnecessary for physical ROV
     async def flush_pin_pwms(self):
         pass   
