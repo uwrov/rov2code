@@ -7,6 +7,8 @@ import threading
 import time
 from typing import NamedTuple
 
+from core.rov_config import rov_ip
+
 class Camera(NamedTuple):
     port: int
     window: str
@@ -74,10 +76,10 @@ class Interface():
             cv2.moveWindow(camera.window, *camera.position)
             cv2.resizeWindow(camera.window, *camera.size)
 
-        self.captures = [LatestFrameCapture(f"http://172.25.250.1:{camera.port}/") for camera in CAMERAS]
-        uri = 'ws://localhost:8002'
+        self.captures = [LatestFrameCapture(f"http://{rov_ip}:{camera.port}/") for camera in CAMERAS]
+        self.shown_frames = {}
         cwd = (pathlib.Path(__file__).parent / 'godot').resolve()
-        subprocess.Popen(['godot', 'interface.tscn', '-u', uri], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(['godot', 'interface.tscn'], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     async def server_handler(self, _websocket):
         self.websocket = _websocket
@@ -101,7 +103,8 @@ class Interface():
         for capture, camera in zip(self.captures, CAMERAS):
             frame = capture.get()
 
-            if frame is not None:
+            if frame is not None and frame is not self.shown_frames.get(camera.window):
+                self.shown_frames[camera.window] = frame
                 if camera.rotation:
                     frame = cv2.rotate(frame, ROTATIONS[camera.rotation])
                 cv2.imshow(camera.window, frame)

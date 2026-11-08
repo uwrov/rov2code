@@ -8,8 +8,6 @@ var ready = false
 
 var rov_orientation: Basis
 var target_orientation: Basis
-#var last_time = 0.0
-#var time = 0.0
 var power_scale := 0.5 setget set_power_scale
 var hold_time := 0.0
 var hold_repeat_delay := 0.1  # Seconds between repeated steps
@@ -21,8 +19,6 @@ var mode_names = {
 	3: "yaw"
 }
 var totalModes = mode_names.size()
-
-var light_on = false
 
 func _ready():
 	_client.connect("connection_closed", self, "_closed")
@@ -46,15 +42,6 @@ func _connected(proto = ""):
 
 var suspicous_gyro_values = 0
 
-#var gravity_calibration_rotation = Vector3.ZERO
-
-func basis_xform(operator: Basis, input: Basis):
-	return Basis(
-		operator.xform(input.x),
-		operator.xform(input.y),
-		operator.xform(input.z)
-	)
-
 var derivative = Vector3.ZERO
 var imu_last_time = -1.0
 var thrusters = []
@@ -66,12 +53,19 @@ func set_power_scale(value: float) -> void:
 	power_scale = clamp(value, 0.05, 1)
 	$PowerBoost.text = "Power scale: %.3f" % power_scale
 
+# Converts a gantry motor command (-1 to 1) to PWM
+func gantry_pwm(motor: float) -> int:
+	var deadband = 20
+	var delta = motor * 140.0
+	if delta > 5.0:
+		delta += deadband
+	elif delta < -5.0:
+		delta -= deadband
+	return int(round(1500 + delta))
+
 func _on_data():
 	var data = _client.get_peer(1).get_packet().get_string_from_utf8()
-	# print("Got data from server: ", data)
 	var parsed = JSON.parse(data).result
-#	$Label.text = data
-#	$Label.text = str(parsed)
 # warning-ignore:unused_variable
 	var acc  = parsed["accelerometer"]
 	thrusters = parsed["thrusters"]
@@ -79,19 +73,12 @@ func _on_data():
 	gantry = parsed["gantry"]
 	arm_angle = parsed["arm_angle"]
 	var gyro = parsed["quaternion"]
-#	$Label.text = str(acc)
 	# IMU: x left, y forward, z up
 	# ROV: x left, y backward, z up
 	# Godot: x left, y up, z forward
 	if gyro and gyro[0] == null:
 		$Label.text = str(gyro)
-		#$LabelDebug.text = str(gyro)
 		return
-	# var gyrotext = "%.5f %.5f %.5f\n%.5f %.5f %.5f %.5f" % [acc[0], acc[1], acc[2], gyro[0], gyro[1], gyro[2], gyro[3]]
-	# $Label.text = gyrotext
-	
-		# if not acc[0]:
-		# 	$LabelDebug.text = gyrotext
 
 	var prev_rov_orientation = rov_orientation
 	
@@ -108,26 +95,7 @@ func _on_data():
 	# rotate to correct "up" direction
 	rov_orientation = rov_orientation.rotated(Vector3(0.0, 0.0, -1.0), PI / 2)
 	
-	# https://stackoverflow.com/a/55718733
-	# mat3x3 ros_to_unity = /* construct this by hand by mapping input axes to output axes */;
-	# mat3x3 unity_to_ros = ros_to_unity.inverse();
-	# quat q_ros = ...;
-	# mat3x3 m_unity = ros_to_unity * mat3x3(q_ros) * unity_to_ros;
-	# quat q_unity = mat_to_quat(m_unity);
-	
-	# x left, y forward, z up
-	
-#	var godot_to_gyro: Basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.0, 1.0, 0.0))
-#	var gyro_to_godot: Basis = godot_to_gyro.inverse()
-#	var gyro_basis: Basis = Basis(Quat(gyro[0], gyro[1], gyro[2], gyro[3]))
-##	var godot_basis = basis_xform(godot_to_gyro, basis_xform(gyro_basis, gyro_to_godot))
-##	var godot_basis = basis_xform(godot_to_gyro, basis_xform(gyro_basis, gyro_to_godot))
-#	var godot_basis = basis_xform(gyro_to_godot, gyro_basis)
-#	rov_orientation = godot_basis
-	
-	
 	# rov_orientation is now in y-up space
-	
 	
 	var diff = (
 		abs(prev_rov_orientation.x.angle_to(rov_orientation.x)) +
@@ -159,29 +127,17 @@ func _on_data():
 		suspicous_gyro_values = 0
 		$LabelDiff.modulate = Color.white
 	
-#	if Input.is_action_pressed("calibrate_gravity"):
-#		var imu_gravity = Vector3(acc[0], acc[1], acc[2])
-	
-#	if gravity_calibration_rotation:
-#		rov_orientation = rov_orientation.rotated(gravity_calibration_rotation, gravity_calibration_rotation.length())
-	
 	var euler = rov_orientation.get_euler()
 
 	$Label4.text = "Euler X: " + str(euler.x) + "\nEuler Y: " + str(euler.y) + "\nEuler Z: " + str(euler.z)
 	$"%ROVProxy".transform.basis = rov_orientation
 
 
-var rotation_boost_i = Vector3.ZERO
-
 var error_integral = Vector3.ZERO
 
-var spinPWM = 1500
-var toggle_manipulator = false
 var captureFrame = false
 var depthHold = false
 func _process(delta):
-	
-#	time += delta
 	_client.poll()
 	var holding_increase := Input.is_action_pressed("dpad_up")
 	var holding_decrease := Input.is_action_pressed("dpad_down")
@@ -224,22 +180,13 @@ func _process(delta):
 	
 	var rotation := Vector3(
 		Input.get_axis("button_a", "button_y"), #pitch
-		#Input.get_axis("right_stick_right", "right_stick_left"), #roll
 		0.0, # we no longer want to roll like ever
 		Input.get_axis("left_stick_right", "left_stick_left") #yaw
 	)
-	var override = {
-		"motor_a" : 1700 if Input.is_action_pressed("motor_a") else 1500,
-		"motor_b" : 1700 if Input.is_action_pressed("motor_b") else 1500,
-		"motor_c" : 1700 if Input.is_action_pressed("motor_c") else 1500,
-		"motor_d" : 1700 if Input.is_action_pressed("motor_d") else 1500,
-		"motor_e" : 1700 if Input.is_action_pressed("motor_e") else 1500,
-		"motor_f" : 1700 if Input.is_action_pressed("motor_f") else 1500,
-		"motor_g" : 1700 if Input.is_action_pressed("motor_g") else 1500,
-		"motor_h" : 1700 if Input.is_action_pressed("motor_h") else 1500,
-		"motor_i" : 1700 if Input.is_action_pressed("motor_i") else 1500,
-		"motor_j" : 1700 if Input.is_action_pressed("motor_j") else 1500
-	}
+	var override = {}
+	for letter in "abcdefghij":
+		var action = "motor_" + letter
+		override[action] = 1700 if Input.is_action_pressed(action) else 1500
 	$LabelSASState.text = "SAS state: inactive"
 	
 	var rotation_boost = Vector3.ZERO
@@ -247,12 +194,10 @@ func _process(delta):
 	# TODO: should this be "just pressed" ?
 	if Input.is_action_pressed("save_orientation"):
 		$LabelSASState.text = "SAS state: saving"
-#		pass
 		target_orientation = rov_orientation
 	
 	if Input.is_action_pressed("hold_orientation"):
 		$LabelSASState.text = "SAS state: holding - "
-#
 		rotation_boost = Vector3.ZERO
 
 		var x_displacement = rov_orientation.x.cross(target_orientation.x)
@@ -263,14 +208,6 @@ func _process(delta):
 		$LabelSASState.text += "\nY ctrl: " + str(y_displacement)
 		$LabelSASState.text += "\nZ ctrl: " + str(z_displacement)
 		
-#		var temp = x_displacement
-#		x_displacement = z_displacement
-#		z_displacement = temp
-
-#		x_displacement *= -1
-#		y_displacement *= -1
-#		z_displacement *= -1
-
 		var error: Vector3 = x_displacement + y_displacement + z_displacement
 		
 		
@@ -289,7 +226,6 @@ func _process(delta):
 		
 		
 		var proportional = error * 0.1
-#		var derivative = (error - last_error) * -0.1
 
 		var integral = error_integral * 0.1 * 0.0
 		
@@ -319,19 +255,8 @@ func _process(delta):
 		if m > 1.0:
 			motor_1 /= m
 			motor_2 /= m
-	var deadband = 20
-	var delta1 = motor_1 * 140.0
-	if delta1 > 5.0:
-		delta1 += deadband
-	elif delta1 < -5.0:
-		delta1 -= deadband
-	var delta2 =  motor_2 * 140.0
-	if delta2 > 5.0:
-		delta2 += deadband
-	elif delta2 < -5.0:
-		delta2 -= deadband
-	var left_gantry = int(round(1500 + delta1 ))
-	var right_gantry  = int(round(1500 + delta2))
+	var left_gantry = gantry_pwm(motor_1)
+	var right_gantry = gantry_pwm(motor_2)
 	
 	if mode_index == 1:
 		if Input.is_action_pressed("button_b"):
@@ -358,17 +283,9 @@ func _process(delta):
 	if Input.is_action_just_pressed("depth_hold"):
 		depthHold = !depthHold
 		print("Depth Hold: ", depthHold)
-	if Input.is_action_pressed("light_on"):
-		light_on = true
-	else:
-		light_on = false
-	rotation.x *= pow(abs(rotation.x), 1.0)
-	rotation.y *= pow(abs(rotation.y), 1.0)
-	rotation.z *= pow(abs(rotation.z), 1.0)
-	translation.y *= abs(pow(translation.y, 1.0))
+	rotation *= rotation.abs()
+	translation.y *= abs(translation.y)
 	translation.x *= -1.0
-	
-	$InputLabel.text = "%s : %s" % [str(translation), str(rotation)]
 	
 	$"%TranslationXValue".text = str("%0.3f" % translation.x)
 	$"%TranslationYValue".text = str("%0.3f" % translation.y)
@@ -402,7 +319,6 @@ func _process(delta):
 	$ServoCurrentPWMLabel.text = str("%0.1f" %manipulator_pwm)
 	
 	$InputLabel.text = str(translation)
-	print(rotation)
 	if ready:
 		var data = {
 			"type": "control_input",
@@ -412,7 +328,6 @@ func _process(delta):
 			"manipulator_pwm": int(manipulator_pwm),
 			"left_gantry": left_gantry,
 			"right_gantry": right_gantry,
-			"light_on": light_on,
 			"capture_frame" : captureFrame,
 			"depth_hold" : depthHold,
 			"direct_motors" : $"%DirectMotorsButton".pressed,

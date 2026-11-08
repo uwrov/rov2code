@@ -16,6 +16,8 @@
 rov_center_of_mass = [0.002023, -0.133479, 0.01563]
 imu_position = [0, -0.25, 0.042]
 
+rov_ip = '172.25.250.1'
+
 # mass, kg
 rov_mass = 8.17
 

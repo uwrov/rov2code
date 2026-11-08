@@ -2,6 +2,7 @@ import random
 import numpy as np
 from .rov_config import thruster_config as THRUSTER_CFG
 from .rov_config import motor_config as MOTOR_CFG
+from .rov_config import rov_ip
 
 from .motor_power_translator import convert_force_and_torque_to_motor_powers
 from .force_to_pwm import convert_motor_powers_to_pwms
@@ -61,7 +62,7 @@ class Core():
         self.depth_prev_error = 0.0
         self.depth_prev_time = None
         
-        self.cams = {port: cv2.VideoCapture(f"http://172.25.250.1:{port}/") for port in CAMERA_PORTS}
+        self.cams = {port: cv2.VideoCapture(f"http://{rov_ip}:{port}/") for port in CAMERA_PORTS}
         self.img_counter = 0
 
         self.prev_pwms = [NEUTRAL_PWM] * len(THRUSTER_CFG)
